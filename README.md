@@ -147,18 +147,69 @@ func getUser(c echo.Context) (UserResponse, error) {
 }
 ```
 
-## Middleware
+## Middleware & Echo Compatibility
 
-Use Echo middleware as normal:
+EchoNext is fully compatible with all Echo middleware and features. Since it wraps `*echo.Echo`, you have access to everything Echo provides:
 
 ```go
 import "github.com/labstack/echo/v4/middleware"
 
 app := echonext.New()
+
+// All standard Echo middleware works
 app.Use(middleware.Logger())
 app.Use(middleware.Recover())
 app.Use(middleware.CORS())
+app.Use(middleware.Gzip())
+app.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20)))
+app.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
+    return username == "admin" && password == "secret", nil
+}))
 ```
+
+### Echo Features Available
+
+- **Context methods**: `c.Param()`, `c.QueryParam()`, `c.FormValue()`, etc.
+- **File uploads**: `c.FormFile()`, `c.MultipartForm()`
+- **Static files**: `app.Static("/static", "assets")`
+- **Route groups**: `api := app.Group("/api")`
+- **Custom binders**: Custom request binding logic
+- **Error handling**: Echo's centralized error handler
+- **Server options**: TLS, graceful shutdown, etc.
+
+### Example with Echo Features
+
+```go
+app := echonext.New()
+
+// Use Echo middleware
+app.Use(middleware.Logger())
+app.Use(middleware.CORS())
+
+// Create route groups (standard Echo)
+api := app.Group("/api/v1")
+
+// Static files (standard Echo)
+app.Static("/assets", "public")
+
+// EchoNext typed routes work within groups
+api.POST("/users", createUser, echonext.Route{
+    Summary: "Create user",
+    Tags:    []string{"Users"},
+})
+
+// Mix typed and standard Echo handlers
+app.POST("/upload", func(c echo.Context) error {
+    file, err := c.FormFile("upload")
+    if err != nil {
+        return err
+    }
+    // Standard Echo file handling
+    return c.String(200, "Uploaded: "+file.Filename)
+})
+```
+
+EchoNext adds type safety and OpenAPI generation **on top of** Echo without removing any functionality!
 
 ## Example Application
 
