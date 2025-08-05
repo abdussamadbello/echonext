@@ -31,13 +31,54 @@ type RouteInfo struct {
 	Tags         []string
 	RequestType  reflect.Type
 	ResponseType reflect.Type
+	RouteConfig  *Route // Store the full route configuration
 }
 
 // Route configures route metadata for OpenAPI generation
 type Route struct {
-	Summary     string
+	Summary         string
+	Description     string
+	Tags            []string
+	Security        []Security
+	SuccessStatus   int
+	RequestHeaders  map[string]HeaderInfo
+	ResponseHeaders map[string]HeaderInfo
+	ContentTypes    []string
+	Examples        map[string]interface{}
+}
+
+// Security defines security requirements for a route
+type Security struct {
+	Type   string // "bearer", "apiKey", "oauth2", "basic"
+	Name   string // For apiKey: header/query/cookie name
+	Scheme string // For bearer: "bearer", for basic: "basic"
+	In     string // For apiKey: "header", "query", "cookie"
+}
+
+// HeaderInfo describes a header parameter
+type HeaderInfo struct {
 	Description string
-	Tags        []string
+	Required    bool
+	Schema      string // "string", "integer", etc.
+}
+
+// Server represents an OpenAPI server
+type Server struct {
+	URL         string
+	Description string
+}
+
+// Contact represents OpenAPI contact information
+type Contact struct {
+	Name  string
+	URL   string
+	Email string
+}
+
+// License represents OpenAPI license information
+type License struct {
+	Name string
+	URL  string
 }
 
 // Response wraps API responses with a standard structure
@@ -75,6 +116,68 @@ func (app *App) SetInfo(title, version, description string) {
 	app.spec.Info.Title = title
 	app.spec.Info.Version = version
 	app.spec.Info.Description = description
+}
+
+// SetContact sets the API contact information
+func (app *App) SetContact(name, url, email string) {
+	if app.spec.Info.Contact == nil {
+		app.spec.Info.Contact = &openapi3.Contact{}
+	}
+	app.spec.Info.Contact.Name = name
+	app.spec.Info.Contact.URL = url
+	app.spec.Info.Contact.Email = email
+}
+
+// SetLicense sets the API license information
+func (app *App) SetLicense(name, url string) {
+	if app.spec.Info.License == nil {
+		app.spec.Info.License = &openapi3.License{}
+	}
+	app.spec.Info.License.Name = name
+	app.spec.Info.License.URL = url
+}
+
+// SetServers sets the API servers
+func (app *App) SetServers(servers []Server) {
+	app.spec.Servers = make([]*openapi3.Server, len(servers))
+	for i, server := range servers {
+		app.spec.Servers[i] = &openapi3.Server{
+			URL:         server.URL,
+			Description: server.Description,
+		}
+	}
+}
+
+// AddSecurityScheme adds a security scheme to the OpenAPI spec
+func (app *App) AddSecurityScheme(name string, security Security) {
+	if app.spec.Components.SecuritySchemes == nil {
+		app.spec.Components.SecuritySchemes = make(openapi3.SecuritySchemes)
+	}
+
+	scheme := &openapi3.SecurityScheme{}
+
+	switch security.Type {
+	case "bearer":
+		scheme.Type = "http"
+		scheme.Scheme = "bearer"
+		if security.Scheme != "" {
+			scheme.BearerFormat = security.Scheme
+		}
+	case "apiKey":
+		scheme.Type = "apiKey"
+		scheme.Name = security.Name
+		scheme.In = security.In
+	case "basic":
+		scheme.Type = "http"
+		scheme.Scheme = "basic"
+	case "oauth2":
+		scheme.Type = "oauth2"
+		// OAuth2 flows would need additional configuration
+	}
+
+	app.spec.Components.SecuritySchemes[name] = &openapi3.SecuritySchemeRef{
+		Value: scheme,
+	}
 }
 
 // GET registers a typed GET endpoint
@@ -128,15 +231,17 @@ func (app *App) registerRoute(method, path string, handler interface{}, opts ...
 	}
 
 	if len(opts) > 0 {
-		routeInfo.Summary = opts[0].Summary
-		routeInfo.Description = opts[0].Description
-		routeInfo.Tags = opts[0].Tags
+		route := opts[0]
+		routeInfo.Summary = route.Summary
+		routeInfo.Description = route.Description
+		routeInfo.Tags = route.Tags
+		routeInfo.RouteConfig = &route
 	}
 
 	app.routes = append(app.routes, routeInfo)
 
 	// Create Echo handler
-	echoHandler := app.createEchoHandler(handler, requestType, responseType)
+	echoHandler := app.createEchoHandler(handler, requestType, responseType, routeInfo.RouteConfig)
 
 	switch method {
 	case "GET":
@@ -153,7 +258,7 @@ func (app *App) registerRoute(method, path string, handler interface{}, opts ...
 }
 
 // createEchoHandler wraps typed handlers for Echo
-func (app *App) createEchoHandler(handler interface{}, requestType, responseType reflect.Type) echo.HandlerFunc {
+func (app *App) createEchoHandler(handler interface{}, requestType, responseType reflect.Type, routeConfig *Route) echo.HandlerFunc {
 	handlerValue := reflect.ValueOf(handler)
 
 	return func(c echo.Context) error {
@@ -226,7 +331,13 @@ func (app *App) createEchoHandler(handler interface{}, requestType, responseType
 
 			// Return successful response
 			if results[0].IsValid() && !results[0].IsZero() {
-				return c.JSON(http.StatusOK, Response[any]{
+				// Determine status code
+				statusCode := http.StatusOK
+				if routeConfig != nil && routeConfig.SuccessStatus > 0 {
+					statusCode = routeConfig.SuccessStatus
+				}
+
+				return c.JSON(statusCode, Response[any]{
 					Data:    results[0].Interface(),
 					Success: true,
 				})
@@ -267,6 +378,25 @@ func (app *App) addRouteToSpec(route RouteInfo) {
 		Tags:        route.Tags,
 		Responses:   openapi3.Responses{},
 		Parameters:  openapi3.Parameters{},
+		Security:    &openapi3.SecurityRequirements{},
+	}
+
+	// Add security requirements if specified
+	if route.RouteConfig != nil && len(route.RouteConfig.Security) > 0 {
+		for _, sec := range route.RouteConfig.Security {
+			secReq := openapi3.SecurityRequirement{}
+			switch sec.Type {
+			case "bearer":
+				secReq["bearerAuth"] = []string{}
+			case "apiKey":
+				if sec.Name != "" {
+					secReq[sec.Name] = []string{}
+				}
+			case "basic":
+				secReq["basicAuth"] = []string{}
+			}
+			*operation.Security = append(*operation.Security, secReq)
+		}
 	}
 
 	// Extract path parameters
@@ -286,6 +416,26 @@ func (app *App) addRouteToSpec(route RouteInfo) {
 		}
 	}
 
+	// Add request headers if specified
+	if route.RouteConfig != nil && len(route.RouteConfig.RequestHeaders) > 0 {
+		for headerName, headerInfo := range route.RouteConfig.RequestHeaders {
+			schemaType := headerInfo.Schema
+			if schemaType == "" {
+				schemaType = "string"
+			}
+			param := &openapi3.Parameter{
+				Name:        headerName,
+				In:          "header",
+				Required:    headerInfo.Required,
+				Description: headerInfo.Description,
+				Schema: &openapi3.SchemaRef{
+					Value: &openapi3.Schema{Type: schemaType},
+				},
+			}
+			operation.Parameters = append(operation.Parameters, &openapi3.ParameterRef{Value: param})
+		}
+	}
+
 	// Add request body schema if applicable
 	if route.RequestType != nil {
 		if route.Method == "GET" || route.Method == "DELETE" {
@@ -294,14 +444,38 @@ func (app *App) addRouteToSpec(route RouteInfo) {
 		} else {
 			// Add request body for POST/PUT/PATCH
 			schema := app.generateSchema(route.RequestType)
-			requestBody := &openapi3.RequestBody{
-				Content: openapi3.Content{
-					"application/json": &openapi3.MediaType{
-						Schema: &openapi3.SchemaRef{
-							Value: schema,
-						},
+
+			// Determine content types
+			contentTypes := []string{"application/json"}
+			if route.RouteConfig != nil && len(route.RouteConfig.ContentTypes) > 0 {
+				contentTypes = route.RouteConfig.ContentTypes
+			}
+
+			content := openapi3.Content{}
+			for _, contentType := range contentTypes {
+				mediaType := &openapi3.MediaType{
+					Schema: &openapi3.SchemaRef{
+						Value: schema,
 					},
-				},
+				}
+
+				// Add examples if provided
+				if route.RouteConfig != nil && len(route.RouteConfig.Examples) > 0 {
+					mediaType.Examples = make(openapi3.Examples)
+					for exampleName, exampleValue := range route.RouteConfig.Examples {
+						mediaType.Examples[exampleName] = &openapi3.ExampleRef{
+							Value: &openapi3.Example{
+								Value: exampleValue,
+							},
+						}
+					}
+				}
+
+				content[contentType] = mediaType
+			}
+
+			requestBody := &openapi3.RequestBody{
+				Content:  content,
 				Required: true,
 			}
 			operation.RequestBody = &openapi3.RequestBodyRef{Value: requestBody}
@@ -326,16 +500,43 @@ func (app *App) addRouteToSpec(route RouteInfo) {
 			},
 		}
 
-		operation.Responses["200"] = &openapi3.ResponseRef{
-			Value: &openapi3.Response{
-				Description: strPtr("Successful response"),
-				Content: openapi3.Content{
-					"application/json": &openapi3.MediaType{
-						Schema: &openapi3.SchemaRef{Value: responseSchema},
-					},
+		// Determine success status code
+		successStatus := "200"
+		if route.RouteConfig != nil && route.RouteConfig.SuccessStatus > 0 {
+			successStatus = fmt.Sprintf("%d", route.RouteConfig.SuccessStatus)
+		}
+
+		response := &openapi3.Response{
+			Description: strPtr("Successful response"),
+			Content: openapi3.Content{
+				"application/json": &openapi3.MediaType{
+					Schema: &openapi3.SchemaRef{Value: responseSchema},
 				},
 			},
 		}
+
+		// Add response headers if specified
+		if route.RouteConfig != nil && len(route.RouteConfig.ResponseHeaders) > 0 {
+			response.Headers = make(openapi3.Headers)
+			for headerName, headerInfo := range route.RouteConfig.ResponseHeaders {
+				schemaType := headerInfo.Schema
+				if schemaType == "" {
+					schemaType = "string"
+				}
+				response.Headers[headerName] = &openapi3.HeaderRef{
+					Value: &openapi3.Header{
+						Parameter: openapi3.Parameter{
+							Description: headerInfo.Description,
+							Schema: &openapi3.SchemaRef{
+								Value: &openapi3.Schema{Type: schemaType},
+							},
+						},
+					},
+				}
+			}
+		}
+
+		operation.Responses[successStatus] = &openapi3.ResponseRef{Value: response}
 	}
 
 	// Add error responses
@@ -482,6 +683,11 @@ func (app *App) generateSchema(t reflect.Type) *openapi3.Schema {
 			}
 
 			fieldSchema := app.generateSchema(field.Type)
+
+			// Add example from struct tag
+			if exampleTag := field.Tag.Get("example"); exampleTag != "" {
+				fieldSchema.Example = exampleTag
+			}
 
 			// Add validation from struct tags
 			if validateTag := field.Tag.Get("validate"); validateTag != "" {

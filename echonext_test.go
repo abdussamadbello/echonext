@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/abdussamadbello/echonext"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
-	"github.com/abdussamadbello/echonext"
 )
 
 // Test models
@@ -303,4 +303,134 @@ func createTestApp() *echonext.App {
 
 func generateTestID() string {
 	return fmt.Sprintf("user_%d", time.Now().UnixNano())
+}
+
+func TestAdvancedOpenAPIFeatures(t *testing.T) {
+	app := echonext.New()
+	app.SetInfo("Advanced API", "2.0.0", "API with advanced OpenAPI features")
+	app.SetContact("API Team", "https://example.com/support", "api@example.com")
+	app.SetLicense("MIT", "https://opensource.org/licenses/MIT")
+	app.SetServers([]echonext.Server{
+		{URL: "https://api.example.com/v1", Description: "Production"},
+		{URL: "https://staging.example.com/v1", Description: "Staging"},
+	})
+
+	// Add security schemes
+	app.AddSecurityScheme("bearerAuth", echonext.Security{
+		Type:   "bearer",
+		Scheme: "JWT",
+	})
+	app.AddSecurityScheme("apiKey", echonext.Security{
+		Type: "apiKey",
+		Name: "X-API-Key",
+		In:   "header",
+	})
+
+	type AdvancedRequest struct {
+		Name string `json:"name" validate:"required" example:"John Doe"`
+		Age  int    `json:"age" validate:"min=1,max=120" example:"30"`
+	}
+
+	type AdvancedResponse struct {
+		ID   string `json:"id" example:"123"`
+		Name string `json:"name" example:"John Doe"`
+	}
+
+	// Register route with advanced features
+	app.POST("/advanced", func(c echo.Context, req AdvancedRequest) (AdvancedResponse, error) {
+		return AdvancedResponse{
+			ID:   "123",
+			Name: req.Name,
+		}, nil
+	}, echonext.Route{
+		Summary:       "Advanced endpoint",
+		Description:   "Demonstrates advanced OpenAPI features",
+		Tags:          []string{"Advanced"},
+		SuccessStatus: 201,
+		Security: []echonext.Security{
+			{Type: "bearer"},
+			{Type: "apiKey", Name: "X-API-Key"},
+		},
+		RequestHeaders: map[string]echonext.HeaderInfo{
+			"X-Request-ID": {
+				Description: "Unique request identifier",
+				Required:    true,
+				Schema:      "string",
+			},
+		},
+		ResponseHeaders: map[string]echonext.HeaderInfo{
+			"X-Rate-Limit": {
+				Description: "Requests remaining",
+				Schema:      "integer",
+			},
+		},
+		ContentTypes: []string{"application/json", "application/xml"},
+		Examples: map[string]interface{}{
+			"example1": map[string]interface{}{
+				"name": "John Doe",
+				"age":  30,
+			},
+		},
+	})
+
+	// Generate spec and test
+	spec := app.GenerateOpenAPISpec()
+
+	// Test basic info
+	assert.Equal(t, "Advanced API", spec.Info.Title)
+	assert.Equal(t, "2.0.0", spec.Info.Version)
+	assert.NotNil(t, spec.Info.Contact)
+	assert.Equal(t, "API Team", spec.Info.Contact.Name)
+	assert.NotNil(t, spec.Info.License)
+	assert.Equal(t, "MIT", spec.Info.License.Name)
+
+	// Test servers
+	assert.Len(t, spec.Servers, 2)
+	assert.Equal(t, "https://api.example.com/v1", spec.Servers[0].URL)
+
+	// Test security schemes
+	assert.NotNil(t, spec.Components.SecuritySchemes)
+	assert.Contains(t, spec.Components.SecuritySchemes, "bearerAuth")
+	assert.Contains(t, spec.Components.SecuritySchemes, "apiKey")
+
+	// Test route features
+	assert.NotNil(t, spec.Paths["/advanced"])
+	post := spec.Paths["/advanced"].Post
+	assert.NotNil(t, post)
+
+	// Test security requirements
+	assert.NotNil(t, post.Security)
+	assert.Greater(t, len(*post.Security), 0)
+
+	// Test response status
+	assert.Contains(t, post.Responses, "201")
+	assert.NotContains(t, post.Responses, "200")
+
+	// Test request body examples
+	assert.NotNil(t, post.RequestBody)
+	jsonContent := post.RequestBody.Value.Content["application/json"]
+	assert.NotNil(t, jsonContent)
+	assert.NotNil(t, jsonContent.Examples)
+}
+
+func TestCustomStatusCodes(t *testing.T) {
+	app := echonext.New()
+
+	app.POST("/create", func(c echo.Context, req TestUser) (TestUser, error) {
+		return req, nil
+	}, echonext.Route{
+		SuccessStatus: 201,
+	})
+
+	reqBody := TestUser{Name: "John", Email: "john@example.com"}
+	body, _ := json.Marshal(reqBody)
+
+	req := httptest.NewRequest(http.MethodPost, "/create", bytes.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	// Should return 201 Created instead of 200 OK
+	assert.Equal(t, 201, rec.Code)
 }

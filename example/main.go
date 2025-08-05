@@ -5,9 +5,9 @@ import (
 	"log"
 	"time"
 
+	"github.com/abdussamadbello/echonext"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/abdussamadbello/echonext"
 )
 
 // Domain models
@@ -22,8 +22,8 @@ type Todo struct {
 
 // Request/Response DTOs
 type CreateTodoRequest struct {
-	Title       string `json:"title" validate:"required,min=3,max=200"`
-	Description string `json:"description" validate:"max=1000"`
+	Title       string `json:"title" validate:"required,min=3,max=200" example:"Learn Go"`
+	Description string `json:"description" validate:"max=1000" example:"Study Go programming language"`
 }
 
 type UpdateTodoRequest struct {
@@ -59,6 +59,23 @@ func main() {
 		"1.0.0",
 		"A simple todo management API built with EchoNext",
 	)
+	app.SetContact("Todo Team", "https://example.com/support", "support@example.com")
+	app.SetLicense("MIT", "https://opensource.org/licenses/MIT")
+	app.SetServers([]echonext.Server{
+		{URL: "http://localhost:8080", Description: "Development server"},
+		{URL: "https://api.todo.com", Description: "Production server"},
+	})
+
+	// Add security schemes
+	app.AddSecurityScheme("bearerAuth", echonext.Security{
+		Type:   "bearer",
+		Scheme: "JWT",
+	})
+	app.AddSecurityScheme("apiKeyAuth", echonext.Security{
+		Type: "apiKey",
+		Name: "X-API-Key",
+		In:   "header",
+	})
 
 	// Add middleware
 	app.Use(middleware.Logger())
@@ -76,9 +93,32 @@ func main() {
 
 	// Todo endpoints
 	app.POST("/todos", createTodo, echonext.Route{
-		Summary:     "Create a new todo",
-		Description: "Creates a new todo item with the provided title and description",
-		Tags:        []string{"Todos"},
+		Summary:       "Create a new todo",
+		Description:   "Creates a new todo item with the provided title and description",
+		Tags:          []string{"Todos"},
+		SuccessStatus: 201,
+		Security: []echonext.Security{
+			{Type: "bearer"},
+		},
+		RequestHeaders: map[string]echonext.HeaderInfo{
+			"X-Request-ID": {
+				Description: "Unique request identifier",
+				Required:    false,
+				Schema:      "string",
+			},
+		},
+		ResponseHeaders: map[string]echonext.HeaderInfo{
+			"X-Todo-ID": {
+				Description: "ID of the created todo",
+				Schema:      "string",
+			},
+		},
+		Examples: map[string]interface{}{
+			"basic": map[string]interface{}{
+				"title":       "Learn EchoNext",
+				"description": "Study the EchoNext framework",
+			},
+		},
 	})
 
 	app.GET("/todos", listTodos, echonext.Route{
@@ -97,12 +137,20 @@ func main() {
 		Summary:     "Update todo",
 		Description: "Updates an existing todo item",
 		Tags:        []string{"Todos"},
+		Security: []echonext.Security{
+			{Type: "bearer"},
+			{Type: "apiKey", Name: "X-API-Key"},
+		},
 	})
 
 	app.DELETE("/todos/:id", deleteTodo, echonext.Route{
-		Summary:     "Delete todo",
-		Description: "Deletes a todo item by its ID",
-		Tags:        []string{"Todos"},
+		Summary:       "Delete todo",
+		Description:   "Deletes a todo item by its ID",
+		Tags:          []string{"Todos"},
+		SuccessStatus: 204,
+		Security: []echonext.Security{
+			{Type: "bearer"},
+		},
 	})
 
 	// Serve API documentation

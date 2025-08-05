@@ -211,6 +211,107 @@ app.POST("/upload", func(c echo.Context) error {
 
 EchoNext adds type safety and OpenAPI generation **on top of** Echo without removing any functionality!
 
+## Advanced OpenAPI Features
+
+### Security Schemes
+
+Define security requirements for your API:
+
+```go
+app := echonext.New()
+
+// Add security schemes
+app.AddSecurityScheme("bearerAuth", echonext.Security{
+    Type:   "bearer",
+    Scheme: "JWT",
+})
+app.AddSecurityScheme("apiKey", echonext.Security{
+    Type: "apiKey",
+    Name: "X-API-Key",
+    In:   "header",
+})
+
+// Apply security to routes
+app.POST("/protected", handler, echonext.Route{
+    Security: []echonext.Security{
+        {Type: "bearer"},
+        {Type: "apiKey", Name: "X-API-Key"},
+    },
+})
+```
+
+### Custom Response Status Codes
+
+Use appropriate HTTP status codes:
+
+```go
+app.POST("/users", createUser, echonext.Route{
+    SuccessStatus: 201, // Returns 201 Created instead of 200 OK
+})
+
+app.DELETE("/users/:id", deleteUser, echonext.Route{
+    SuccessStatus: 204, // Returns 204 No Content
+})
+```
+
+### Request/Response Headers
+
+Document required and optional headers:
+
+```go
+app.POST("/upload", uploadHandler, echonext.Route{
+    RequestHeaders: map[string]echonext.HeaderInfo{
+        "X-Request-ID": {
+            Description: "Unique request identifier",
+            Required:    true,
+            Schema:      "string",
+        },
+    },
+    ResponseHeaders: map[string]echonext.HeaderInfo{
+        "X-Upload-ID": {
+            Description: "ID of uploaded file",
+            Schema:      "string",
+        },
+    },
+})
+```
+
+### Content Types and Examples
+
+Support multiple content types and provide examples:
+
+```go
+type CreateUserRequest struct {
+    Name string `json:"name" example:"John Doe"`
+    Age  int    `json:"age" example:"30"`
+}
+
+app.POST("/users", createUser, echonext.Route{
+    ContentTypes: []string{"application/json", "application/xml"},
+    Examples: map[string]interface{}{
+        "basic": map[string]interface{}{
+            "name": "John Doe",
+            "age":  30,
+        },
+    },
+})
+```
+
+### Complete API Configuration
+
+```go
+app := echonext.New()
+
+// Set comprehensive API information
+app.SetInfo("My API", "1.0.0", "A comprehensive API example")
+app.SetContact("API Team", "https://example.com/support", "api@example.com")
+app.SetLicense("MIT", "https://opensource.org/licenses/MIT")
+app.SetServers([]echonext.Server{
+    {URL: "https://api.example.com/v1", Description: "Production"},
+    {URL: "https://staging.example.com/v1", Description: "Staging"},
+})
+```
+
 ## Example Application
 
 Run the example Todo API:
