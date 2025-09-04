@@ -626,8 +626,29 @@ func (app *App) addQueryParameters(operation *openapi3.Operation, t reflect.Type
 
 // generateSchema generates OpenAPI schema from Go type
 func (app *App) generateSchema(t reflect.Type) *openapi3.Schema {
+	visited := make(map[reflect.Type]bool)
+	return app.generateSchemaWithVisited(t, visited)
+}
+
+// generateSchemaWithVisited generates OpenAPI schema with circular reference detection
+func (app *App) generateSchemaWithVisited(t reflect.Type, visited map[reflect.Type]bool) *openapi3.Schema {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
+	}
+
+	// Check for circular reference
+	if visited[t] {
+		// Return a simple reference to avoid infinite recursion
+		return &openapi3.Schema{
+			Type:        "object",
+			Description: fmt.Sprintf("Circular reference to %s", t.String()),
+		}
+	}
+
+	// Mark this type as visited for structs to detect cycles
+	if t.Kind() == reflect.Struct && t.String() != "time.Time" {
+		visited[t] = true
+		defer func() { delete(visited, t) }() // Clean up when done
 	}
 
 	switch t.Kind() {
@@ -642,13 +663,13 @@ func (app *App) generateSchema(t reflect.Type) *openapi3.Schema {
 	case reflect.Slice:
 		return &openapi3.Schema{
 			Type:  "array",
-			Items: &openapi3.SchemaRef{Value: app.generateSchema(t.Elem())},
+			Items: &openapi3.SchemaRef{Value: app.generateSchemaWithVisited(t.Elem(), visited)},
 		}
 	case reflect.Map:
 		return &openapi3.Schema{
 			Type: "object",
 			AdditionalProperties: openapi3.AdditionalProperties{
-				Schema: &openapi3.SchemaRef{Value: app.generateSchema(t.Elem())},
+				Schema: &openapi3.SchemaRef{Value: app.generateSchemaWithVisited(t.Elem(), visited)},
 			},
 		}
 	case reflect.Struct:
@@ -682,7 +703,7 @@ func (app *App) generateSchema(t reflect.Type) *openapi3.Schema {
 				}
 			}
 
-			fieldSchema := app.generateSchema(field.Type)
+			fieldSchema := app.generateSchemaWithVisited(field.Type, visited)
 
 			// Add example from struct tag
 			if exampleTag := field.Tag.Get("example"); exampleTag != "" {
