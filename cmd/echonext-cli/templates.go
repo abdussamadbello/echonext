@@ -569,7 +569,7 @@ type DatabaseConfig struct {
 
 // Generate more template files...
 func (g *ProjectGenerator) generateServer() string {
-	return fmt.Sprintf(`package server
+	return `package server
 
 import (
 	"github.com/abdussamadbello/echonext"
@@ -626,5 +626,5 @@ type AppConfig struct {
 	Port        int
 	Debug       bool
 }
-`, g.Module)
+`
 }

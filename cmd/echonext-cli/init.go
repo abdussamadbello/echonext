@@ -205,12 +205,14 @@ func (g *ProjectGenerator) generateGoMod() string {
 go 1.21
 
 require (
-	github.com/abdussamadbello/echonext v0.1.0
+	github.com/abdussamadbello/echonext v0.0.0-00010101000000-000000000000
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/spf13/viper v1.18.2
 	gorm.io/gorm v1.25.5
 	gorm.io/driver/postgres v1.5.4
 )
+
+replace github.com/abdussamadbello/echonext => ../../
 `, g.Module)
 }
 

@@ -292,37 +292,37 @@ func NewHandler(service Service) *Handler {
 
 // RegisterRoutes registers all user routes
 func (h *Handler) RegisterRoutes(app *echonext.App) {
-	group := app.Group("/users")
+	users := app.Group("/users")
 
-	group.POST("", h.Create, echonext.Route{
-		Summary:     "Create a new user",
-		Description: "Creates a new user with the provided information",
-		Tags:        []string{"Users"},
+	users.POST("", h.Create, echonext.Route{
+		Summary:       "Create a new user",
+		Description:   "Creates a new user with the provided information",
+		Tags:          []string{"Users"},
 		SuccessStatus: 201,
 	})
 
-	group.GET("", h.List, echonext.Route{
+	users.GET("", h.List, echonext.Route{
 		Summary:     "List users",
 		Description: "Returns a paginated list of users",
 		Tags:        []string{"Users"},
 	})
 
-	group.GET("/:id", h.GetByID, echonext.Route{
+	users.GET("/:id", h.GetByID, echonext.Route{
 		Summary:     "Get user by ID",
 		Description: "Returns a single user by their ID",
 		Tags:        []string{"Users"},
 	})
 
-	group.PUT("/:id", h.Update, echonext.Route{
+	users.PUT("/:id", h.Update, echonext.Route{
 		Summary:     "Update user",
 		Description: "Updates an existing user",
 		Tags:        []string{"Users"},
 	})
 
-	group.DELETE("/:id", h.Delete, echonext.Route{
-		Summary:     "Delete user",
-		Description: "Soft-deletes a user by their ID",
-		Tags:        []string{"Users"},
+	users.DELETE("/:id", h.Delete, echonext.Route{
+		Summary:       "Delete user",
+		Description:   "Soft-deletes a user by their ID",
+		Tags:          []string{"Users"},
 		SuccessStatus: 204,
 	})
 }
