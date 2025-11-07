@@ -1,38 +1,17 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"log"
+)
 
 // generateUserModel creates a sample User model
 func (g *ProjectGenerator) generateUserModel() string {
-	return `package user
-
-import (
-	"time"
-
-	"gorm.io/gorm"
-)
-
-// User represents a user in the system
-type User struct {
-	ID        uint           ` + "`json:\"id\" gorm:\"primarykey\"`" + `
-	Name      string         ` + "`json:\"name\" gorm:\"not null\" validate:\"required,min=2,max=100\"`" + `
-	Email     string         ` + "`json:\"email\" gorm:\"uniqueIndex;not null\" validate:\"required,email\"`" + `
-	CreatedAt time.Time      ` + "`json:\"created_at\"`" + `
-	UpdatedAt time.Time      ` + "`json:\"updated_at\"`" + `
-	DeletedAt gorm.DeletedAt ` + "`json:\"-\" gorm:\"index\"`" + `
-}
-
-// TableName returns the table name for User model
-func (User) TableName() string {
-	return "users"
-}
-
-// BeforeCreate is called before creating a user
-func (u *User) BeforeCreate(tx *gorm.DB) error {
-	// Add any pre-creation logic here
-	return nil
-}
-`
+	content, err := g.templateGenerator.GenerateUserModel()
+	if err != nil {
+		log.Fatalf("Failed to generate user model: %v", err)
+	}
+	return content
 }
 
 // generateUserService creates a sample User service

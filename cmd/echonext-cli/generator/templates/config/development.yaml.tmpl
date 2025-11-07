@@ -1,0 +1,23 @@
+# Development Configuration
+app:
+  name: "{{ .Name }}"
+  version: "1.0.0"
+  environment: "development"
+  port: 8080
+  debug: true
+
+database:
+  driver: "postgres"
+  dsn: "postgres://postgres:password@localhost:5432/{{ .Name }}_dev?sslmode=disable"
+  auto_migrate: true
+  log_queries: true
+
+cache:
+  driver: "redis"
+  address: "localhost:6379"
+  default_ttl: 3600
+
+logger:
+  level: "debug"
+  format: "text"
+  output: "stdout"

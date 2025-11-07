@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"strings"
 )
 
@@ -21,85 +22,29 @@ func (g *ProjectGenerator) generateConfigYAML(environment string) string {
 
 // generateDevelopmentConfig creates development configuration
 func (g *ProjectGenerator) generateDevelopmentConfig() string {
-	return fmt.Sprintf(`# Development Configuration
-app:
-  name: "%s"
-  version: "1.0.0"
-  environment: "development"
-  port: 8080
-  debug: true
-
-database:
-  driver: "postgres"
-  dsn: "postgres://postgres:password@localhost:5432/%s_dev?sslmode=disable"
-  auto_migrate: true
-  log_queries: true
-
-cache:
-  driver: "redis"
-  address: "localhost:6379"
-  default_ttl: 3600
-
-logger:
-  level: "debug"
-  format: "text"
-  output: "stdout"
-`, g.Name, g.Name)
+	content, err := g.templateGenerator.GenerateDevelopmentConfig()
+	if err != nil {
+		log.Fatalf("Failed to generate development config: %v", err)
+	}
+	return content
 }
 
 // generateProductionConfig creates production configuration
 func (g *ProjectGenerator) generateProductionConfig() string {
-	return fmt.Sprintf(`# Production Configuration
-app:
-  name: "%s"
-  version: "1.0.0"
-  environment: "production"
-  port: 8080
-  debug: false
-
-database:
-  driver: "postgres"
-  dsn: "${DATABASE_URL}"
-  auto_migrate: false
-  log_queries: false
-
-cache:
-  driver: "redis"
-  address: "${REDIS_URL}"
-  default_ttl: 3600
-
-logger:
-  level: "info"
-  format: "json"
-  output: "stdout"
-`, g.Name)
+	content, err := g.templateGenerator.GenerateProductionConfig()
+	if err != nil {
+		log.Fatalf("Failed to generate production config: %v", err)
+	}
+	return content
 }
 
 // generateTestConfig creates test configuration
 func (g *ProjectGenerator) generateTestConfig() string {
-	return fmt.Sprintf(`# Test Configuration
-app:
-  name: "%s"
-  version: "1.0.0"
-  environment: "test"
-  port: 8081
-  debug: true
-
-database:
-  driver: "postgres"
-  dsn: "postgres://postgres:password@localhost:5432/%s_test?sslmode=disable"
-  auto_migrate: true
-  log_queries: false
-
-cache:
-  driver: "memory"
-  default_ttl: 300
-
-logger:
-  level: "error"
-  format: "text"
-  output: "stdout"
-`, g.Name, g.Name)
+	content, err := g.templateGenerator.GenerateTestConfig()
+	if err != nil {
+		log.Fatalf("Failed to generate test config: %v", err)
+	}
+	return content
 }
 
 // generateDockerCompose creates docker-compose.yml
@@ -110,8 +55,8 @@ services:
   # API Server
   api:
     build:
-      context: .
-      dockerfile: Dockerfile.api
+      context: ..
+      dockerfile: infrastructure/Dockerfile.api
     ports:
       - "8080:8080"
     environment:
@@ -125,8 +70,8 @@ services:
   # Background Worker
   worker:
     build:
-      context: .
-      dockerfile: Dockerfile.worker
+      context: ..
+      dockerfile: infrastructure/Dockerfile.worker
     environment:
       - %s_DATABASE_DSN=postgres://postgres:password@postgres:5432/%s_dev?sslmode=disable
       - %s_CACHE_ADDRESS=redis:6379
@@ -144,7 +89,7 @@ services:
       - POSTGRES_DB=%s_dev
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ../scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
     restart: unless-stopped
@@ -161,8 +106,8 @@ services:
   # Migration (run once)
   migration:
     build:
-      context: .
-      dockerfile: Dockerfile.api
+      context: ..
+      dockerfile: infrastructure/Dockerfile.api
     command: ["./migration", "up"]
     environment:
       - %s_DATABASE_DSN=postgres://postgres:password@postgres:5432/%s_dev?sslmode=disable

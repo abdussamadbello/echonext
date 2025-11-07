@@ -1,0 +1,132 @@
+package database
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+
+	"{{ .Module }}/domain/user"
+)
+
+// Connect creates a database connection
+func Connect(cfg DatabaseConfig) (*gorm.DB, error) {
+	// Configure GORM logger
+	logLevel := logger.Silent
+	if cfg.LogQueries {
+		logLevel = logger.Info
+	}
+
+	gormLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
+		logger.Config{
+			SlowThreshold:             time.Second,
+			LogLevel:                  logLevel,
+			IgnoreRecordNotFoundError: true,
+			Colorful:                  true,
+		},
+	)
+
+	// Open database connection
+	db, err := gorm.Open(postgres.Open(cfg.DSN), &gorm.Config{
+		Logger: gormLogger,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	// Configure connection pool
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database instance: %w", err)
+	}
+
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	// Auto migrate if enabled
+	if cfg.AutoMigrate {
+		if err := RunMigrations(db); err != nil {
+			return nil, fmt.Errorf("auto migration failed: %w", err)
+		}
+	}
+
+	return db, nil
+}
+
+// RunMigrations runs database migrations
+func RunMigrations(db *gorm.DB) error {
+	return db.AutoMigrate(
+		&user.User{},
+		// Add other models here
+	)
+}
+
+// RollbackMigrations rolls back database migrations
+func RollbackMigrations(db *gorm.DB) error {
+	// Note: GORM doesn't support automatic rollback
+	// You'll need to implement this manually or use a migration tool
+	fmt.Println("⚠️  Manual rollback required - GORM doesn't support automatic rollback")
+	return nil
+}
+
+// MigrationStatus shows current migration status
+func MigrationStatus(db *gorm.DB) error {
+	// Check if tables exist
+	tables := []string{"users"}
+
+	for _, table := range tables {
+		if db.Migrator().HasTable(table) {
+			fmt.Printf("✅ Table '%s' exists\n", table)
+		} else {
+			fmt.Printf("❌ Table '%s' missing\n", table)
+		}
+	}
+
+	return nil
+}
+
+// SeedData seeds the database with sample data
+func SeedData(db *gorm.DB) error {
+	// Create sample users
+	users := []user.User{
+		{
+			Name:  "Admin User",
+			Email: "admin@{{ .Name }}.com",
+		},
+		{
+			Name:  "Test User",
+			Email: "test@{{ .Name }}.com",
+		},
+	}
+
+	for _, u := range users {
+		// Check if user already exists
+		var existing user.User
+		if err := db.Where("email = ?", u.Email).First(&existing).Error; err == nil {
+			fmt.Printf("👤 User '%s' already exists, skipping\n", u.Email)
+			continue
+		}
+
+		if err := db.Create(&u).Error; err != nil {
+			return fmt.Errorf("failed to create user %s: %w", u.Email, err)
+		}
+
+		fmt.Printf("👤 Created user: %s (%s)\n", u.Name, u.Email)
+	}
+
+	return nil
+}
+
+// DatabaseConfig represents database configuration
+type DatabaseConfig struct {
+	Driver      string
+	DSN         string
+	AutoMigrate bool
+	LogQueries  bool
+}

@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
+	"github.com/abdussamadbello/echonext/cmd/echonext-cli/generator"
 	"github.com/spf13/cobra"
 )
 
@@ -50,9 +51,10 @@ Examples:
 
 			// Create project
 			generator := &ProjectGenerator{
-				Name:     projectName,
-				Module:   module,
-				Template: template,
+				Name:         projectName,
+				Module:       module,
+				Template:     template,
+				EchoNextPath: detectEchoNextPath(),
 			}
 
 			return generator.Generate()
@@ -63,6 +65,24 @@ Examples:
 	cmd.Flags().StringVarP(&module, "module", "m", "", "Go module name (defaults to project name)")
 
 	return cmd
+}
+
+// detectEchoNextPath finds the local echonext path for development
+func detectEchoNextPath() string {
+	// For now, use a simple heuristic - check if we're in echonext directory
+	if _, err := os.Stat("echonext.go"); err == nil {
+		return "." // We're in the echonext root directory
+	}
+	
+	// Check if echonext.go exists in parent directories (up to 3 levels)
+	for _, path := range []string{"../", "../../", "../../../"} {
+		if _, err := os.Stat(path + "echonext.go"); err == nil {
+			return path
+		}
+	}
+	
+	// Default to empty string - will use normal module resolution
+	return ""
 }
 
 // isValidProjectName validates the project name
@@ -82,14 +102,28 @@ func isValidProjectName(name string) bool {
 
 // ProjectGenerator handles project generation
 type ProjectGenerator struct {
-	Name     string
-	Module   string
-	Template string
+	Name             string
+	Module           string
+	Template         string
+	EchoNextPath     string // Path to echonext for local development
+	templateGenerator *generator.ProjectGenerator
 }
 
 // Generate creates the project structure
 func (g *ProjectGenerator) Generate() error {
 	fmt.Printf("🚀 Creating EchoNext project '%s' with template '%s'...\n", g.Name, g.Template)
+
+	// Initialize template generator
+	var err error
+	g.templateGenerator, err = generator.NewProjectGenerator(&generator.ProjectData{
+		Name:         g.Name,
+		Module:       g.Module,
+		Template:     g.Template,
+		EchoNextPath: g.EchoNextPath,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to initialize template generator: %w", err)
+	}
 
 	// Create project directory
 	if err := os.MkdirAll(g.Name, 0755); err != nil {
@@ -114,7 +148,7 @@ func (g *ProjectGenerator) generateStandardProject() error {
 	// Create directory structure
 	dirs := []string{
 		"cmd/api",
-		"cmd/worker", 
+		"cmd/worker",
 		"cmd/cli",
 		"cmd/migration",
 		"domain/user",
@@ -127,6 +161,7 @@ func (g *ProjectGenerator) generateStandardProject() error {
 		"configs",
 		"migrations",
 		"scripts",
+		"infrastructure",
 	}
 
 	for _, dir := range dirs {
@@ -138,13 +173,13 @@ func (g *ProjectGenerator) generateStandardProject() error {
 
 	// Generate files
 	files := map[string]string{
-		"go.mod":                    g.generateGoMod(),
-		"README.md":                 g.generateReadme(),
-		"Makefile":                  g.generateMakefile(),
-		"docker-compose.yml":        g.generateDockerCompose(),
-		"Dockerfile.api":            g.generateDockerfileAPI(),
-		"Dockerfile.worker":         g.generateDockerfileWorker(),
-		".gitignore":                g.generateGitignore(),
+		"go.mod":                           g.generateGoMod(),
+		"README.md":                        g.generateReadme(),
+		"Makefile":                         g.generateMakefile(),
+		"infrastructure/docker-compose.yml": g.generateDockerCompose(),
+		"infrastructure/Dockerfile.api":     g.generateDockerfileAPI(),
+		"infrastructure/Dockerfile.worker":  g.generateDockerfileWorker(),
+		".gitignore":                       g.generateGitignore(),
 		"cmd/api/main.go":           g.generateAPIMain(),
 		"cmd/worker/main.go":        g.generateWorkerMain(),
 		"cmd/cli/main.go":           g.generateCLIMain(),
@@ -200,200 +235,27 @@ func (g *ProjectGenerator) generateMonolithProject() error {
 
 // Template generation methods
 func (g *ProjectGenerator) generateGoMod() string {
-	return fmt.Sprintf(`module %s
-
-go 1.21
-
-require (
-	github.com/abdussamadbello/echonext v0.0.0-00010101000000-000000000000
-	github.com/labstack/echo/v4 v4.11.4
-	github.com/spf13/viper v1.18.2
-	gorm.io/gorm v1.25.5
-	gorm.io/driver/postgres v1.5.4
-)
-
-replace github.com/abdussamadbello/echonext => ../../
-`, g.Module)
+	content, err := g.templateGenerator.GenerateGoMod()
+	if err != nil {
+		log.Fatalf("Failed to generate go.mod: %v", err)
+	}
+	return content
 }
 
 func (g *ProjectGenerator) generateReadme() string {
-	return fmt.Sprintf(`# %s
-
-A type-safe API built with [EchoNext](https://github.com/abdussamadbello/echonext).
-
-## Features
-
-- 🚀 Type-safe HTTP handlers
-- 📝 Automatic OpenAPI generation
-- 🔧 Request/response validation
-- 🗄️ Database integration with GORM
-- 🐳 Docker support
-- 🧪 Comprehensive testing
-
-## Quick Start
-
-### Development
-
-`+"```"+`bash
-# Install dependencies
-go mod tidy
-
-# Start API server
-make run-api
-
-# Start background worker (in separate terminal)
-make run-worker
-
-# Run tests
-make test
-`+"```"+`
-
-### API Documentation
-
-Visit http://localhost:8080/api/docs for interactive API documentation.
-
-### Build & Deploy
-
-`+"```"+`bash
-# Build all executables
-make build
-
-# Build Docker images
-make docker-build
-
-# Deploy with Docker Compose
-docker-compose up -d
-`+"```"+`
-
-## Project Structure
-
-`+"```"+`
-%s/
-├── cmd/                    # Executable entry points
-│   ├── api/               # HTTP API server
-│   ├── worker/            # Background worker
-│   ├── cli/               # CLI tool
-│   └── migration/         # Database migrations
-├── domain/                # Business domains
-│   └── user/              # User domain
-├── internal/              # Private packages
-│   ├── config/            # Configuration
-│   ├── database/          # Database setup
-│   └── server/            # Server setup
-├── tests/                 # Test files
-├── configs/               # Configuration files
-└── migrations/            # SQL migrations
-`+"```"+`
-
-## Configuration
-
-Configuration is managed via YAML files in the `+"` configs/ `"+` directory and can be overridden with environment variables.
-
-Example environment variables:
-`+"```"+`bash
-export MYAPP_APP_PORT=9090
-export MYAPP_DATABASE_DSN="postgres://user:pass@localhost/dbname?sslmode=disable"
-`+"```"+`
-
-## API Endpoints
-
-- `+"` GET /health `"+` - Health check
-- `+"` POST /users `"+` - Create user
-- `+"` GET /users `"+` - List users
-- `+"` GET /users/:id `"+` - Get user by ID
-- `+"` PUT /users/:id `"+` - Update user
-- `+"` DELETE /users/:id `"+` - Delete user
-
-## Generated by EchoNext CLI
-
-This project was generated using:
-`+"```"+`bash
-echonext init %s --template=standard
-`+"```"+`
-
-For more information, visit https://github.com/abdussamadbello/echonext
-`, strings.ToTitle(g.Name), g.Name, g.Name)
+	content, err := g.templateGenerator.GenerateReadme()
+	if err != nil {
+		log.Fatalf("Failed to generate README: %v", err)
+	}
+	return content
 }
 
 func (g *ProjectGenerator) generateMakefile() string {
-	return fmt.Sprintf(`# Makefile for %s
-
-.PHONY: help run-api run-worker run-cli build test clean docker-build docker-push
-
-# Default target
-help:
-	@echo "Available commands:"
-	@echo "  run-api      - Start API server"
-	@echo "  run-worker   - Start background worker"
-	@echo "  run-cli      - Run CLI tool"
-	@echo "  build        - Build all executables"
-	@echo "  test         - Run tests"
-	@echo "  clean        - Clean build artifacts"
-	@echo "  docker-build - Build Docker images"
-
-# Development
-run-api:
-	@echo "Starting API server..."
-	go run ./cmd/api
-
-run-worker:
-	@echo "Starting background worker..."
-	go run ./cmd/worker
-
-run-cli:
-	@echo "Running CLI..."
-	go run ./cmd/cli
-
-# Build
-build:
-	@echo "Building executables..."
-	@mkdir -p bin
-	go build -o bin/api ./cmd/api
-	go build -o bin/worker ./cmd/worker
-	go build -o bin/cli ./cmd/cli
-	go build -o bin/migration ./cmd/migration
-
-# Testing
-test:
-	@echo "Running tests..."
-	go test -v ./...
-
-test-coverage:
-	@echo "Running tests with coverage..."
-	go test -coverprofile=coverage.out ./...
-	go tool cover -html=coverage.out -o coverage.html
-
-# Utilities
-clean:
-	@echo "Cleaning build artifacts..."
-	rm -rf bin/
-	rm -f coverage.out coverage.html
-
-# Database
-db-migrate:
-	@echo "Running database migrations..."
-	go run ./cmd/migration up
-
-db-seed:
-	@echo "Seeding database..."
-	go run ./cmd/migration seed
-
-# Docker
-docker-build:
-	@echo "Building Docker images..."
-	docker build -f Dockerfile.api -t %s-api .
-	docker build -f Dockerfile.worker -t %s-worker .
-
-docker-push:
-	@echo "Pushing Docker images..."
-	docker push %s-api
-	docker push %s-worker
-
-# Development database
-dev-db:
-	@echo "Starting development database..."
-	docker-compose up -d postgres redis
-`, g.Name, g.Name, g.Name, g.Name, g.Name)
+	content, err := g.templateGenerator.GenerateMakefile()
+	if err != nil {
+		log.Fatalf("Failed to generate Makefile: %v", err)
+	}
+	return content
 }
 
 // Additional methods would continue here...

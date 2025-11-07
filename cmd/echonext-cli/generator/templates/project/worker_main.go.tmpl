@@ -1,0 +1,95 @@
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"{{ .Module }}/internal/config"
+	"{{ .Module }}/internal/database"
+)
+
+func main() {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	// Connect to database
+	db, err := database.Connect(cfg.Database)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	// Create context for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start worker
+	worker := NewWorker(db, cfg)
+
+	go func() {
+		log.Println("🔄 Background worker starting...")
+		if err := worker.Start(ctx); err != nil {
+			log.Printf("Worker error: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	<-sigChan
+	log.Println("🛑 Shutting down worker...")
+
+	// Graceful shutdown
+	cancel()
+	time.Sleep(5 * time.Second)
+	log.Println("✅ Worker stopped")
+}
+
+// Worker handles background jobs
+type Worker struct {
+	db  interface{} // Database connection
+	cfg *config.Config
+}
+
+// NewWorker creates a new worker instance
+func NewWorker(db interface{}, cfg *config.Config) *Worker {
+	return &Worker{
+		db:  db,
+		cfg: cfg,
+	}
+}
+
+// Start begins processing background jobs
+func (w *Worker) Start(ctx context.Context) error {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			// TODO: Process background jobs
+			log.Println("🔄 Processing background jobs...")
+
+			// Example job processing
+			if err := w.processEmailQueue(); err != nil {
+				log.Printf("Failed to process email queue: %v", err)
+			}
+		}
+	}
+}
+
+// processEmailQueue processes pending email jobs
+func (w *Worker) processEmailQueue() error {
+	// TODO: Implement email queue processing
+	log.Println("📧 Processing email queue...")
+	return nil
+}
