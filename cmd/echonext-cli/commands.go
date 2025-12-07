@@ -194,12 +194,7 @@ func newGenerateDomainCmd() *cobra.Command {
 Example:
   echonext generate domain user`,
 		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			domainName := args[0]
-			fmt.Printf("🏗️  Generating domain '%s'...\n", domainName)
-			// TODO: Implement domain generation
-			return fmt.Errorf("domain generation not yet implemented")
-		},
+		Run:  runGenerateDomain,
 	}
 }
 
@@ -208,12 +203,7 @@ func newGenerateHandlerCmd() *cobra.Command {
 		Use:   "handler [name]",
 		Short: "Generate HTTP handler",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			handlerName := args[0]
-			fmt.Printf("🌐 Generating handler '%s'...\n", handlerName)
-			// TODO: Implement handler generation
-			return fmt.Errorf("handler generation not yet implemented")
-		},
+		Run:   runGenerateHandler,
 	}
 }
 
@@ -222,12 +212,7 @@ func newGenerateServiceCmd() *cobra.Command {
 		Use:   "service [name]",
 		Short: "Generate business service",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			serviceName := args[0]
-			fmt.Printf("⚙️  Generating service '%s'...\n", serviceName)
-			// TODO: Implement service generation
-			return fmt.Errorf("service generation not yet implemented")
-		},
+		Run:   runGenerateService,
 	}
 }
 
@@ -236,12 +221,7 @@ func newGenerateModelCmd() *cobra.Command {
 		Use:   "model [name]",
 		Short: "Generate GORM model",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			modelName := args[0]
-			fmt.Printf("🏛️  Generating model '%s'...\n", modelName)
-			// TODO: Implement model generation
-			return fmt.Errorf("model generation not yet implemented")
-		},
+		Run:   runGenerateModel,
 	}
 }
 
@@ -250,12 +230,7 @@ func newGenerateDTOCmd() *cobra.Command {
 		Use:   "dto [name]",
 		Short: "Generate request/response DTOs",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			dtoName := args[0]
-			fmt.Printf("📋 Generating DTOs for '%s'...\n", dtoName)
-			// TODO: Implement DTO generation
-			return fmt.Errorf("DTO generation not yet implemented")
-		},
+		Run:   runGenerateDTO,
 	}
 }
 
@@ -264,12 +239,7 @@ func newGenerateMiddlewareCmd() *cobra.Command {
 		Use:   "middleware [name]",
 		Short: "Generate custom middleware",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			middlewareName := args[0]
-			fmt.Printf("🔒 Generating middleware '%s'...\n", middlewareName)
-			// TODO: Implement middleware generation
-			return fmt.Errorf("middleware generation not yet implemented")
-		},
+		Run:   runGenerateMiddleware,
 	}
 }
 
@@ -278,11 +248,7 @@ func newDBInitCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",
 		Short: "Initialize database configuration",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("🗄️  Initializing database configuration...")
-			// TODO: Implement database initialization
-			return fmt.Errorf("db init not yet implemented")
-		},
+		Run:   runDBInit,
 	}
 }
 
@@ -290,11 +256,7 @@ func newDBMigrateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "migrate",
 		Short: "Run database migrations",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("⬆️  Running database migrations...")
-			// TODO: Implement migration runner
-			return fmt.Errorf("db migrate not yet implemented")
-		},
+		Run:   runDBMigrate,
 	}
 }
 
@@ -302,10 +264,6 @@ func newDBSeedCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "seed",
 		Short: "Seed database with sample data",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("🌱 Seeding database...")
-			// TODO: Implement database seeding
-			return fmt.Errorf("db seed not yet implemented")
-		},
+		Run:   runDBSeed,
 	}
 }
