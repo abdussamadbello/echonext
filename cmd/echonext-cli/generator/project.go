@@ -96,3 +96,8 @@ func (g *ProjectGenerator) GenerateDatabase() (string, error) {
 func (g *ProjectGenerator) GenerateServer() (string, error) {
 	return g.engine.Execute("internal/server.go.tmpl", g.data)
 }
+
+// GenerateOTEL generates the internal/otel/otel.go file content
+func (g *ProjectGenerator) GenerateOTEL() (string, error) {
+	return g.engine.Execute("internal/otel.go.tmpl", g.data)
+}

@@ -66,3 +66,12 @@ func (g *ProjectGenerator) generateServer() string {
 	}
 	return content
 }
+
+// generateOTEL creates the OpenTelemetry setup package
+func (g *ProjectGenerator) generateOTEL() string {
+	content, err := g.templateGenerator.GenerateOTEL()
+	if err != nil {
+		log.Fatalf("Failed to generate OTEL: %v", err)
+	}
+	return content
+}

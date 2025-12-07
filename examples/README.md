@@ -149,6 +149,43 @@ echonext generate domain user
 echonext db init
 ```
 
+### 5. OpenTelemetry Demo (Distributed Tracing)
+**Complexity:** Intermediate
+**Path:** `examples/otel-demo/`
+**Type:** Working code example
+**Features:**
+- OTEL initialization and configuration
+- Automatic incoming request tracing
+- Traced outgoing HTTP requests
+- Span events and error recording
+- Request ID correlation
+- Trace context propagation
+
+**Run it:**
+```bash
+# Start Jaeger (trace viewer)
+docker run -d -p 16686:16686 -p 4317:4317 jaegertracing/all-in-one
+
+# Run the example
+go run examples/otel-demo/main.go
+
+# Visit http://localhost:8080/api/docs for API
+# Visit http://localhost:16686 for Jaeger UI
+```
+
+**Add OTEL to your project:**
+```bash
+# Generate OTEL setup in existing project
+echonext generate otel
+
+# Then use in your main.go
+shutdown := otel.MustInit(ctx, otel.DefaultConfig())
+defer shutdown()
+app.Use(middleware.OTELMiddleware("your-service"))
+```
+
+See [otel-demo/README.md](otel-demo/README.md) for detailed documentation.
+
 ## 🚀 Quick Start Workflow
 
 ### General Pattern for Any Project

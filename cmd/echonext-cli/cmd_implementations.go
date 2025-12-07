@@ -203,6 +203,68 @@ func runGenerateMiddleware(cmd *cobra.Command, args []string) {
 	fmt.Printf("✅ Created %s\n", middlewarePath)
 }
 
+func runGenerateOtel(cmd *cobra.Command, args []string) {
+	fmt.Println("🔨 Generating OpenTelemetry setup...")
+
+	if !isEchoNextProject() {
+		log.Fatal("❌ Not in an EchoNext project. Run this command from your project root.")
+	}
+
+	module, err := getModuleName()
+	if err != nil {
+		log.Fatalf("❌ Failed to read module name: %v", err)
+	}
+
+	// Extract project name from module (last segment)
+	parts := strings.Split(module, "/")
+	projectName := parts[len(parts)-1]
+
+	otelDir := filepath.Join("internal", "otel")
+	if err := os.MkdirAll(otelDir, 0755); err != nil {
+		log.Fatalf("❌ Failed to create otel directory: %v", err)
+	}
+
+	// Use template generator
+	gen := &ProjectGenerator{
+		Name:     projectName,
+		Module:   module,
+		Template: "standard",
+	}
+
+	// Initialize the template generator
+	if err := gen.initTemplateGenerator(); err != nil {
+		log.Fatalf("❌ Failed to initialize template generator: %v", err)
+	}
+
+	otelPath := filepath.Join(otelDir, "otel.go")
+	content := gen.generateOTEL()
+
+	if err := os.WriteFile(otelPath, []byte(content), 0644); err != nil {
+		log.Fatalf("❌ Failed to write otel.go: %v", err)
+	}
+	fmt.Printf("  ✅ Created %s\n", otelPath)
+
+	fmt.Println("\n✨ OpenTelemetry setup generated!")
+	fmt.Println("\n📝 Usage in your main.go:")
+	fmt.Println("")
+	fmt.Printf("  import \"%s/internal/otel\"\n", module)
+	fmt.Println("  import \"github.com/abdussamadbello/echonext/pkg/contrib/middleware\"")
+	fmt.Println("")
+	fmt.Println("  func main() {")
+	fmt.Println("      ctx := context.Background()")
+	fmt.Println("      shutdown := otel.MustInit(ctx, otel.DefaultConfig())")
+	fmt.Println("      defer shutdown()")
+	fmt.Println("")
+	fmt.Println("      app := echonext.New()")
+	fmt.Println("      app.Use(middleware.OTELMiddleware(\"your-service\"))")
+	fmt.Println("      // ...")
+	fmt.Println("  }")
+	fmt.Println("")
+	fmt.Println("🌍 Environment variables:")
+	fmt.Println("  OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317")
+	fmt.Println("  OTEL_SERVICE_NAME=your-service")
+}
+
 // Database command implementations
 
 func runDBInit(cmd *cobra.Command, args []string) {

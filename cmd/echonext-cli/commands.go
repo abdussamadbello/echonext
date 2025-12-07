@@ -20,11 +20,12 @@ Available generators:
   model       - GORM model
   dto         - Request/Response DTOs
   middleware  - Custom middleware
+  otel        - OpenTelemetry instrumentation setup
 
 Examples:
   echonext generate domain user
   echonext generate handler product
-  echonext generate service order`,
+  echonext generate otel`,
 		Aliases: []string{"gen", "g"},
 	}
 
@@ -36,6 +37,7 @@ Examples:
 		newGenerateModelCmd(),
 		newGenerateDTOCmd(),
 		newGenerateMiddlewareCmd(),
+		newGenerateOtelCmd(),
 	)
 
 	return cmd
@@ -240,6 +242,30 @@ func newGenerateMiddlewareCmd() *cobra.Command {
 		Short: "Generate custom middleware",
 		Args:  cobra.ExactArgs(1),
 		Run:   runGenerateMiddleware,
+	}
+}
+
+func newGenerateOtelCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "otel",
+		Short: "Generate OpenTelemetry instrumentation setup",
+		Long: `Generate OpenTelemetry configuration and initialization code.
+
+Creates internal/otel/otel.go with:
+  - OTEL configuration struct
+  - Initialization helpers (Init, MustInit)
+  - Default configuration with environment variable support
+  - Traced HTTP client factory
+
+Example:
+  echonext generate otel
+
+Usage in your main.go:
+  shutdown := otel.MustInit(ctx, otel.DefaultConfig())
+  defer shutdown()
+
+  app.Use(middleware.OTELMiddleware("your-service"))`,
+		Run: runGenerateOtel,
 	}
 }
 

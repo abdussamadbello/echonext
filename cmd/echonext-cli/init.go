@@ -109,11 +109,8 @@ type ProjectGenerator struct {
 	templateGenerator *generator.ProjectGenerator
 }
 
-// Generate creates the project structure
-func (g *ProjectGenerator) Generate() error {
-	fmt.Printf("🚀 Creating EchoNext project '%s' with template '%s'...\n", g.Name, g.Template)
-
-	// Initialize template generator
+// initTemplateGenerator initializes the template generator
+func (g *ProjectGenerator) initTemplateGenerator() error {
 	var err error
 	g.templateGenerator, err = generator.NewProjectGenerator(&generator.ProjectData{
 		Name:         g.Name,
@@ -121,7 +118,15 @@ func (g *ProjectGenerator) Generate() error {
 		Template:     g.Template,
 		EchoNextPath: g.EchoNextPath,
 	})
-	if err != nil {
+	return err
+}
+
+// Generate creates the project structure
+func (g *ProjectGenerator) Generate() error {
+	fmt.Printf("🚀 Creating EchoNext project '%s' with template '%s'...\n", g.Name, g.Template)
+
+	// Initialize template generator
+	if err := g.initTemplateGenerator(); err != nil {
 		return fmt.Errorf("failed to initialize template generator: %w", err)
 	}
 

@@ -1,0 +1,75 @@
+package otel
+
+import (
+	"context"
+	"log"
+
+	"github.com/abdussamadbello/echonext/pkg/contrib/middleware"
+)
+
+// Config holds OpenTelemetry configuration
+type Config struct {
+	ServiceName    string
+	ServiceVersion string
+	Environment    string
+	Endpoint       string
+	Insecure       bool
+	SampleRate     float64
+	EnableTracing  bool
+	EnableMetrics  bool
+}
+
+// DefaultConfig returns default OTEL configuration
+// Values can be overridden via environment variables:
+//   - OTEL_EXPORTER_OTLP_ENDPOINT: Collector endpoint (default: localhost:4317)
+//   - OTEL_SERVICE_NAME: Service name
+//   - OTEL_SAMPLE_RATE: Sampling rate 0.0-1.0
+func DefaultConfig() Config {
+	return Config{
+		ServiceName:    "{{ .Name }}",
+		ServiceVersion: "1.0.0",
+		Environment:    "development",
+		Endpoint:       "localhost:4317",
+		Insecure:       true,
+		SampleRate:     1.0,
+		EnableTracing:  true,
+		EnableMetrics:  true,
+	}
+}
+
+// Init initializes OpenTelemetry with the given configuration
+// Returns a shutdown function that should be called on application exit
+func Init(ctx context.Context, cfg Config) (*middleware.OTELShutdown, error) {
+	return middleware.InitOTEL(ctx, middleware.OTELConfig{
+		ServiceName:    cfg.ServiceName,
+		ServiceVersion: cfg.ServiceVersion,
+		Environment:    cfg.Environment,
+		Endpoint:       cfg.Endpoint,
+		Insecure:       cfg.Insecure,
+		SampleRate:     cfg.SampleRate,
+		EnableTracing:  cfg.EnableTracing,
+		EnableMetrics:  cfg.EnableMetrics,
+	})
+}
+
+// MustInit initializes OTEL and returns a shutdown function
+// If initialization fails, it logs a warning and returns a no-op shutdown
+// This allows the application to run without OTEL if the collector is unavailable
+func MustInit(ctx context.Context, cfg Config) func() {
+	shutdown, err := Init(ctx, cfg)
+	if err != nil {
+		log.Printf("OTEL initialization failed (running without tracing): %v", err)
+		return func() {}
+	}
+	return func() {
+		if err := shutdown.Shutdown(ctx); err != nil {
+			log.Printf("OTEL shutdown error: %v", err)
+		}
+	}
+}
+
+// NewTracedHTTPClient creates an HTTP client with OTEL instrumentation
+// Use this for making outgoing HTTP requests with trace propagation
+func NewTracedHTTPClient() *middleware.TracedHTTPClient {
+	return middleware.NewTracedHTTPClient()
+}
