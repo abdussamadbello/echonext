@@ -1,0 +1,57 @@
+package server
+
+import (
+	"github.com/abdussamadbello/echonext"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+)
+
+// New creates a new EchoNext server with middleware
+func New(cfg *Config) *echonext.App {
+	// Create EchoNext app
+	app := echonext.New()
+
+	// Configure API info
+	app.SetInfo(
+		cfg.App.Name,
+		cfg.App.Version,
+		"API built with EchoNext framework",
+	)
+
+	// Add middleware
+	app.Use(middleware.Logger())
+	app.Use(middleware.Recover())
+	app.Use(middleware.CORS())
+
+	// Add health check
+	app.GET("/health", func(c echo.Context) (map[string]interface{}, error) {
+		return map[string]interface{}{
+			"status":      "healthy",
+			"service":     cfg.App.Name,
+			"version":     cfg.App.Version,
+			"environment": cfg.App.Environment,
+		}, nil
+	}, echonext.Route{
+		Summary: "Health check",
+		Tags:    []string{"System"},
+	})
+
+	// Serve OpenAPI documentation
+	app.ServeOpenAPISpec("/api/openapi.json")
+	app.ServeSwaggerUI("/api/docs", "/api/openapi.json")
+
+	return app
+}
+
+// Config represents server configuration
+type Config struct {
+	App AppConfig
+}
+
+type AppConfig struct {
+	Name        string
+	Version     string
+	Environment string
+	Port        int
+	Debug       bool
+}

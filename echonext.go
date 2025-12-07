@@ -21,6 +21,13 @@ type App struct {
 	routes    []RouteInfo
 }
 
+// Group represents a route group with type-safe handlers
+type Group struct {
+	app       *App
+	echoGroup *echo.Group
+	prefix    string
+}
+
 // RouteInfo stores metadata about a route for OpenAPI generation
 type RouteInfo struct {
 	Method       string
@@ -203,6 +210,115 @@ func (app *App) PATCH(path string, handler interface{}, opts ...Route) {
 // DELETE registers a typed DELETE endpoint
 func (app *App) DELETE(path string, handler interface{}, opts ...Route) {
 	app.registerRoute("DELETE", path, handler, opts...)
+}
+
+// Group creates a route group with the given prefix
+func (app *App) Group(prefix string, middleware ...echo.MiddlewareFunc) *Group {
+	echoGroup := app.Echo.Group(prefix, middleware...)
+	return &Group{
+		app:       app,
+		echoGroup: echoGroup,
+		prefix:    prefix,
+	}
+}
+
+// Group methods for type-safe route registration
+
+// GET registers a typed GET endpoint on the group
+func (g *Group) GET(path string, handler interface{}, opts ...Route) {
+	fullPath := g.prefix + path
+	g.registerGroupRoute("GET", fullPath, path, handler, opts...)
+}
+
+// POST registers a typed POST endpoint on the group
+func (g *Group) POST(path string, handler interface{}, opts ...Route) {
+	fullPath := g.prefix + path
+	g.registerGroupRoute("POST", fullPath, path, handler, opts...)
+}
+
+// PUT registers a typed PUT endpoint on the group
+func (g *Group) PUT(path string, handler interface{}, opts ...Route) {
+	fullPath := g.prefix + path
+	g.registerGroupRoute("PUT", fullPath, path, handler, opts...)
+}
+
+// PATCH registers a typed PATCH endpoint on the group
+func (g *Group) PATCH(path string, handler interface{}, opts ...Route) {
+	fullPath := g.prefix + path
+	g.registerGroupRoute("PATCH", fullPath, path, handler, opts...)
+}
+
+// DELETE registers a typed DELETE endpoint on the group
+func (g *Group) DELETE(path string, handler interface{}, opts ...Route) {
+	fullPath := g.prefix + path
+	g.registerGroupRoute("DELETE", fullPath, path, handler, opts...)
+}
+
+// Use adds middleware to the group
+func (g *Group) Use(middleware ...echo.MiddlewareFunc) {
+	g.echoGroup.Use(middleware...)
+}
+
+// Group creates a sub-group with the given prefix
+func (g *Group) Group(prefix string, middleware ...echo.MiddlewareFunc) *Group {
+	echoGroup := g.echoGroup.Group(prefix, middleware...)
+	return &Group{
+		app:       g.app,
+		echoGroup: echoGroup,
+		prefix:    g.prefix + prefix,
+	}
+}
+
+// registerGroupRoute registers a route on the group
+func (g *Group) registerGroupRoute(method, fullPath, relativePath string, handler interface{}, opts ...Route) {
+	handlerType := reflect.TypeOf(handler)
+	if handlerType.Kind() != reflect.Func {
+		panic("handler must be a function")
+	}
+
+	// Extract request and response types
+	var requestType, responseType reflect.Type
+	if handlerType.NumIn() > 1 {
+		requestType = handlerType.In(1)
+	}
+	if handlerType.NumOut() > 0 {
+		responseType = handlerType.Out(0)
+	}
+
+	// Store route info for OpenAPI generation (use full path for OpenAPI)
+	routeInfo := RouteInfo{
+		Method:       method,
+		Path:         fullPath,
+		Handler:      handler,
+		RequestType:  requestType,
+		ResponseType: responseType,
+	}
+
+	if len(opts) > 0 {
+		route := opts[0]
+		routeInfo.Summary = route.Summary
+		routeInfo.Description = route.Description
+		routeInfo.Tags = route.Tags
+		routeInfo.RouteConfig = &route
+	}
+
+	g.app.routes = append(g.app.routes, routeInfo)
+
+	// Create Echo handler and register on group (use relative path for Echo)
+	echoHandler := g.app.createEchoHandler(handler, requestType, responseType, routeInfo.RouteConfig)
+
+	switch method {
+	case "GET":
+		g.echoGroup.GET(relativePath, echoHandler)
+	case "POST":
+		g.echoGroup.POST(relativePath, echoHandler)
+	case "PUT":
+		g.echoGroup.PUT(relativePath, echoHandler)
+	case "PATCH":
+		g.echoGroup.PATCH(relativePath, echoHandler)
+	case "DELETE":
+		g.echoGroup.DELETE(relativePath, echoHandler)
+	}
 }
 
 // registerRoute registers a route with type information
@@ -807,6 +923,31 @@ func (app *App) ServeSwaggerUI(path string, specPath string) {
 </html>`, app.spec.Info.Title, specPath)
 		return c.HTML(http.StatusOK, html)
 	})
+}
+
+// Response helper functions
+
+// Success creates a successful response
+func Success[T any](data T) Response[T] {
+	return Response[T]{
+		Data:    data,
+		Success: true,
+	}
+}
+
+// Error creates an error response
+func Error[T any](message string) Response[T] {
+	return Response[T]{
+		Error:   message,
+		Success: false,
+	}
+}
+
+// NoContent creates an empty successful response
+func NoContent() Response[interface{}] {
+	return Response[interface{}]{
+		Success: true,
+	}
 }
 
 // Helper functions

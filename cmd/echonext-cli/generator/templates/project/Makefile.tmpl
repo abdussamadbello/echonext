@@ -1,0 +1,87 @@
+# Makefile for {{ .Name }}
+
+.PHONY: help run-api run-worker run-cli build test clean docker-build docker-up docker-down
+
+# Default target
+help:
+	@echo "Available commands:"
+	@echo "  run-api      - Start API server"
+	@echo "  run-worker   - Start background worker"
+	@echo "  run-cli      - Run CLI tool"
+	@echo "  build        - Build all executables"
+	@echo "  test         - Run tests"
+	@echo "  clean        - Clean build artifacts"
+	@echo "  docker-build - Build Docker images"
+	@echo "  docker-up    - Start services with docker-compose"
+	@echo "  docker-down  - Stop services"
+
+# Development
+run-api:
+	@echo "Starting API server..."
+	go run ./cmd/api
+
+run-worker:
+	@echo "Starting background worker..."
+	go run ./cmd/worker
+
+run-cli:
+	@echo "Running CLI..."
+	go run ./cmd/cli
+
+# Build
+build:
+	@echo "Building executables..."
+	@mkdir -p bin
+	go build -o bin/api ./cmd/api
+	go build -o bin/worker ./cmd/worker
+	go build -o bin/cli ./cmd/cli
+	go build -o bin/migration ./cmd/migration
+
+# Testing
+test:
+	@echo "Running tests..."
+	go test -v ./...
+
+test-coverage:
+	@echo "Running tests with coverage..."
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+
+# Utilities
+clean:
+	@echo "Cleaning build artifacts..."
+	rm -rf bin/
+	rm -f coverage.out coverage.html
+
+# Database
+db-migrate:
+	@echo "Running database migrations..."
+	go run ./cmd/migration up
+
+db-seed:
+	@echo "Seeding database..."
+	go run ./cmd/migration seed
+
+# Docker
+docker-build:
+	@echo "Building Docker images..."
+	docker build -f infrastructure/Dockerfile.api -t {{ .Name }}-api .
+	docker build -f infrastructure/Dockerfile.worker -t {{ .Name }}-worker .
+
+docker-push:
+	@echo "Pushing Docker images..."
+	docker push {{ .Name }}-api
+	docker push {{ .Name }}-worker
+
+docker-up:
+	@echo "Starting services with docker-compose..."
+	cd infrastructure && docker-compose up -d
+
+docker-down:
+	@echo "Stopping services..."
+	cd infrastructure && docker-compose down
+
+# Development database
+dev-db:
+	@echo "Starting development database..."
+	cd infrastructure && docker-compose up -d postgres redis

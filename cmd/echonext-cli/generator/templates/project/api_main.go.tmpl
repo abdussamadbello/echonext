@@ -1,0 +1,40 @@
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"{{ .Module }}/domain/user"
+	"{{ .Module }}/internal/config"
+	"{{ .Module }}/internal/database"
+	"{{ .Module }}/internal/server"
+)
+
+func main() {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	// Connect to database
+	db, err := database.Connect(cfg.Database)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	// Create server
+	app := server.New(cfg)
+
+	// Register domains
+	userHandler := user.NewHandler(user.NewService(user.NewRepository(db)))
+	userHandler.RegisterRoutes(app)
+
+	// Start server
+	log.Printf("🚀 API server starting on port %d", cfg.App.Port)
+	log.Printf("📖 API docs available at http://localhost:%d/api/docs", cfg.App.Port)
+
+	if err := app.Start(fmt.Sprintf(":%d", cfg.App.Port)); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
+}

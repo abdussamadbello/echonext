@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/abdussamadbello/echonext"
+	contribmw "github.com/abdussamadbello/echonext/pkg/contrib/middleware"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -49,9 +54,38 @@ type ListTodosResponse struct {
 // In-memory storage
 var todos = make(map[string]*Todo)
 
+// Traced HTTP client for outgoing requests (demonstrates OTEL propagation)
+var tracedClient *contribmw.TracedHTTPClient
+
 func main() {
 	// Create EchoNext app
 	app := echonext.New()
+
+	// ==========================================================================
+	// OpenTelemetry Setup (Optional - runs without collector if unavailable)
+	// ==========================================================================
+	// Initialize OTEL - traces and metrics will be sent to the OTLP collector
+	// If no collector is running, the app will still work (just no tracing)
+	ctx := context.Background()
+	shutdown, err := contribmw.InitOTEL(ctx, contribmw.OTELConfig{
+		ServiceName:    "todo-api",
+		ServiceVersion: "1.0.0",
+		Environment:    "development",
+		Endpoint:       "localhost:4317", // Default OTLP gRPC endpoint
+		Insecure:       true,
+		SampleRate:     1.0, // Sample all requests in development
+		EnableTracing:  true,
+		EnableMetrics:  true,
+	})
+	if err != nil {
+		log.Printf("⚠️  OTEL initialization failed (running without tracing): %v", err)
+	} else {
+		defer shutdown.Shutdown(ctx)
+		log.Println("✅ OpenTelemetry initialized - traces will be sent to localhost:4317")
+	}
+
+	// Initialize traced HTTP client for outgoing requests
+	tracedClient = contribmw.NewTracedHTTPClient()
 
 	// Configure API info
 	app.SetInfo(
@@ -84,6 +118,11 @@ func main() {
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{echo.GET, echo.PUT, echo.POST, echo.DELETE},
 	}))
+
+	// Add OTEL middleware for automatic request tracing
+	// This creates spans for all incoming HTTP requests
+	app.Use(contribmw.RequestID()) // Adds X-Request-ID header
+	app.Use(contribmw.OTELMiddleware("todo-api"))
 
 	// Health check
 	app.GET("/health", healthCheck, echonext.Route{
@@ -151,6 +190,24 @@ func main() {
 		Security: []echonext.Security{
 			{Type: "bearer"},
 		},
+	})
+
+	// ==========================================================================
+	// OTEL Demo Endpoints - Demonstrates distributed tracing features
+	// ==========================================================================
+
+	// External API call with traced HTTP client
+	app.GET("/external", fetchExternalData, echonext.Route{
+		Summary:     "Fetch external data (OTEL demo)",
+		Description: "Demonstrates traced outgoing HTTP requests. The trace context is automatically propagated to external services.",
+		Tags:        []string{"OTEL Demo"},
+	})
+
+	// Trace info endpoint - shows current trace context
+	app.GET("/trace-info", getTraceInfo, echonext.Route{
+		Summary:     "Get trace information (OTEL demo)",
+		Description: "Returns the current trace ID and span ID for debugging distributed traces.",
+		Tags:        []string{"OTEL Demo"},
 	})
 
 	// Serve API documentation
@@ -298,4 +355,75 @@ func seedData() {
 		CreatedAt:   time.Now().Add(-12 * time.Hour),
 		UpdatedAt:   time.Now().Add(-6 * time.Hour),
 	}
+}
+
+// =============================================================================
+// OTEL Demo Handlers - Demonstrates distributed tracing features
+// =============================================================================
+
+// fetchExternalData demonstrates making traced outgoing HTTP requests
+// The trace context is automatically propagated to external services
+func fetchExternalData(c echo.Context) (map[string]interface{}, error) {
+	// Add a custom span event (visible in trace viewers like Jaeger)
+	contribmw.AddSpanEvent(c, "starting external API call")
+
+	// Get context with trace info - this will be propagated to external service
+	ctx := c.Request().Context()
+
+	// Make traced HTTP request using our instrumented client
+	// The traceparent header is automatically injected
+	resp, err := tracedClient.Get(ctx, "https://httpbin.org/json")
+	if err != nil {
+		contribmw.RecordError(c, err)
+		return nil, echo.NewHTTPError(http.StatusBadGateway, "failed to fetch external data")
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		contribmw.RecordError(c, err)
+		return nil, echo.NewHTTPError(http.StatusInternalServerError, "failed to read response")
+	}
+
+	// Parse JSON response
+	var externalData map[string]interface{}
+	if err := json.Unmarshal(body, &externalData); err != nil {
+		contribmw.RecordError(c, err)
+		return nil, echo.NewHTTPError(http.StatusInternalServerError, "failed to parse response")
+	}
+
+	// Add another span event
+	contribmw.AddSpanEvent(c, "external API call completed")
+
+	// Return response with trace info for debugging
+	return map[string]interface{}{
+		"trace_id":      contribmw.GetTraceID(c),
+		"span_id":       contribmw.GetSpanID(c),
+		"external_data": externalData,
+		"message":       "This request was traced! Check your OTEL collector (Jaeger/Zipkin) to see the distributed trace.",
+	}, nil
+}
+
+// getTraceInfo returns the current trace context information
+// Useful for debugging distributed traces
+func getTraceInfo(c echo.Context) (map[string]interface{}, error) {
+	traceID := contribmw.GetTraceID(c)
+	spanID := contribmw.GetSpanID(c)
+	requestID := contribmw.GetRequestID(c)
+
+	// Add a span event
+	contribmw.AddSpanEvent(c, "trace info requested")
+
+	return map[string]interface{}{
+		"trace_id":   traceID,
+		"span_id":    spanID,
+		"request_id": requestID,
+		"info": map[string]string{
+			"trace_id_desc":   "Unique identifier for the entire distributed trace",
+			"span_id_desc":    "Unique identifier for this specific operation within the trace",
+			"request_id_desc": "Correlation ID added by RequestID middleware",
+		},
+		"how_to_view": "Set up Jaeger (docker run -d -p 16686:16686 -p 4317:4317 jaegertracing/all-in-one) and visit http://localhost:16686",
+	}, nil
 }

@@ -370,6 +370,114 @@ Error responses:
 }
 ```
 
+## Optional Contrib Packages
+
+EchoNext provides optional helper packages in `pkg/contrib/` for common tasks. These are completely optional - you can use the underlying libraries directly if you prefer.
+
+### 📦 Database (`pkg/contrib/database`)
+
+GORM integration helpers with:
+- Connection management with retry logic
+- Generic Repository[T] pattern
+- Transaction utilities
+- Migration helpers
+
+```go
+import "github.com/abdussamadbello/echonext/pkg/contrib/database"
+
+cfg := database.DefaultConfig()
+db, err := database.Connect(postgres.Open(dsn), cfg)
+
+// Use repository pattern with generics
+userRepo := database.NewRepository[User](db)
+user, err := userRepo.Find(1)
+users, err := userRepo.Where("active = ?", true).FindAll()
+```
+
+### ⚙️ Config (`pkg/contrib/config`)
+
+Viper integration helpers with:
+- Generic config loading
+- Environment variable binding
+- Hot reload support
+- Standard config structures
+
+```go
+import "github.com/abdussamadbello/echonext/pkg/contrib/config"
+
+type MyConfig struct {
+    App      config.AppConfig      `mapstructure:"app"`
+    Database config.DatabaseConfig `mapstructure:"database"`
+}
+
+var cfg MyConfig
+config.LoadSimple(&cfg)
+```
+
+### 🧪 Testing (`pkg/contrib/testing`)
+
+Testing utilities with:
+- APIClient for testing endpoints
+- FixtureManager for test data
+- Test suite with setup/teardown
+- Factory pattern for test entities
+
+```go
+import echonexttest "github.com/abdussamadbello/echonext/pkg/contrib/testing"
+
+client := echonexttest.NewAPIClient(app)
+resp := client.POST("/users", userRequest)
+resp.AssertStatus(t, 201).AssertSuccess(t)
+```
+
+See [pkg/contrib/README.md](pkg/contrib/README.md) for detailed documentation.
+
+## 🎓 Example Projects
+
+Learn by example! Check out our complete example projects:
+
+### [⚡ Quickstart](example/main.go) - Running Example
+Complete working Todo API. Run it now!
+
+```bash
+go run example/main.go
+# Visit http://localhost:8080/api/docs
+```
+
+### [📝 Todo List API](examples/todo-api/) - Beginner
+Simple CRUD operations demonstrating the basics of EchoNext.
+
+```bash
+echonext init todo-api
+echonext generate domain todo
+go run ./cmd/api
+```
+
+### [📰 Blog API](examples/blog-api/) - Intermediate
+Multi-domain blog platform with authentication, search, and relationships.
+
+```bash
+echonext init blog-api
+echonext generate domain post
+echonext generate domain comment
+echonext generate domain user
+```
+
+### [🛒 E-commerce API](examples/ecommerce-api/) - Advanced
+Complete e-commerce platform with orders, payments, and inventory.
+
+```bash
+echonext init ecommerce-api
+echonext generate domain product
+echonext generate domain order
+echonext generate domain payment
+```
+
+### [🔧 Microservices](examples/microservice/) - Expert
+Distributed system with service-to-service communication and events.
+
+See [examples/README.md](examples/README.md) for detailed guides and more examples.
+
 ## Contributing
 
 1. Fork the repository
@@ -384,9 +492,21 @@ MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Roadmap
 
-- [ ] Support for file uploads
-- [ ] WebSocket support
+**Completed:**
+- [x] ✅ Database integration helpers (see `pkg/contrib/database`)
+- [x] ✅ Configuration management helpers (see `pkg/contrib/config`)
+- [x] ✅ Testing utilities (see `pkg/contrib/testing`)
+- [x] ✅ Middleware helpers (see `pkg/contrib/middleware`)
+- [x] ✅ CLI tool for project generation (`echonext init`)
+- [x] ✅ Code generation commands (`echonext generate domain/handler/service/model/dto`)
+- [x] ✅ Database management commands (`echonext db init/migrate/seed`)
+- [x] ✅ Complete example projects (Todo, Blog, E-commerce, Microservices)
+
+**Planned:**
+- [ ] Hot reload dev command (`echonext dev`)
+- [ ] Enhanced test runner (`echonext test`)
+- [ ] Build automation (`echonext build`)
+- [ ] Support for file uploads in OpenAPI spec
+- [ ] WebSocket support with type safety
 - [ ] GraphQL integration
-- [ ] Database integration helpers
 - [ ] Code generation from OpenAPI spec
-- [ ] Authentication/Authorization helpers

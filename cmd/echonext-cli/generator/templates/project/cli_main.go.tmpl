@@ -1,0 +1,107 @@
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/spf13/cobra"
+	"{{ .Module }}/internal/config"
+	"{{ .Module }}/internal/database"
+)
+
+func main() {
+	rootCmd := &cobra.Command{
+		Use:   "{{ .Name }}",
+		Short: "{{ .Name | title }} CLI tool",
+		Long:  "Command-line interface for {{ .Name }} application",
+	}
+
+	// Add commands
+	rootCmd.AddCommand(
+		newMigrateCmd(),
+		newSeedCmd(),
+		newUserCmd(),
+	)
+
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// newMigrateCmd returns the migrate command
+func newMigrateCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "migrate",
+		Short: "Run database migrations",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.Load()
+			if err != nil {
+				return fmt.Errorf("failed to load config: %w", err)
+			}
+
+			db, err := database.Connect(cfg.Database)
+			if err != nil {
+				return fmt.Errorf("failed to connect to database: %w", err)
+			}
+
+			fmt.Println("Running database migrations...")
+			return database.RunMigrations(db)
+		},
+	}
+}
+
+// newSeedCmd returns the seed command
+func newSeedCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "seed",
+		Short: "Seed database with sample data",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.Load()
+			if err != nil {
+				return fmt.Errorf("failed to load config: %w", err)
+			}
+
+			db, err := database.Connect(cfg.Database)
+			if err != nil {
+				return fmt.Errorf("failed to connect to database: %w", err)
+			}
+
+			fmt.Println("Seeding database...")
+			return database.SeedData(db)
+		},
+	}
+}
+
+// newUserCmd returns the user management commands
+func newUserCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "user",
+		Short: "User management commands",
+	}
+
+	cmd.AddCommand(
+		&cobra.Command{
+			Use:   "create [email] [name]",
+			Short: "Create a new user",
+			Args:  cobra.ExactArgs(2),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				email, name := args[0], args[1]
+				fmt.Printf("Creating user: %s (%s)\n", name, email)
+				// TODO: Implement user creation
+				return nil
+			},
+		},
+		&cobra.Command{
+			Use:   "list",
+			Short: "List all users",
+			RunE: func(cmd *cobra.Command, args []string) error {
+				fmt.Println("Listing users...")
+				// TODO: Implement user listing
+				return nil
+			},
+		},
+	)
+
+	return cmd
+}

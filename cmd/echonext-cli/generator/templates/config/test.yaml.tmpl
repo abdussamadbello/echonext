@@ -1,0 +1,22 @@
+# Test Configuration
+app:
+  name: "{{ .Name }}"
+  version: "1.0.0"
+  environment: "test"
+  port: 8081
+  debug: true
+
+database:
+  driver: "postgres"
+  dsn: "postgres://postgres:password@localhost:5432/{{ .Name }}_test?sslmode=disable"
+  auto_migrate: true
+  log_queries: false
+
+cache:
+  driver: "memory"
+  default_ttl: 300
+
+logger:
+  level: "error"
+  format: "text"
+  output: "stdout"

@@ -1,0 +1,23 @@
+# Production Configuration
+app:
+  name: "{{ .Name }}"
+  version: "1.0.0"
+  environment: "production"
+  port: 8080
+  debug: false
+
+database:
+  driver: "postgres"
+  dsn: "${DATABASE_URL}"
+  auto_migrate: false
+  log_queries: false
+
+cache:
+  driver: "redis"
+  address: "${REDIS_URL}"
+  default_ttl: 3600
+
+logger:
+  level: "info"
+  format: "json"
+  output: "stdout"
