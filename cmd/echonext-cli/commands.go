@@ -145,21 +145,17 @@ func newTestCmd() *cobra.Command {
 	var verbose bool
 
 	cmd := &cobra.Command{
-		Use:   "test",
+		Use:   "test [flags] [-- additional go test flags]",
 		Short: "Run tests with enhanced features",
 		Long: `Run tests with additional features like coverage reporting and parallel execution.
 
 Examples:
-  echonext test
-  echonext test --coverage
-  echonext test --verbose`,
+  echonext test                    # Run all tests
+  echonext test --coverage         # Run with coverage report
+  echonext test --verbose          # Run with verbose output
+  echonext test -- -run TestUser   # Pass flags to go test`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("🧪 Running tests...")
-			if coverage {
-				fmt.Println("📊 Generating coverage report...")
-			}
-			// TODO: Implement enhanced test runner
-			return fmt.Errorf("test command not yet implemented")
+			return runTest(coverage, verbose, args)
 		},
 	}
 
@@ -180,23 +176,22 @@ func newBuildCmd() *cobra.Command {
 		Long: `Build the project for production deployment.
 
 Available targets:
-  all      - Build all executables (default)
-  api      - Build only API server
-  worker   - Build only background worker
-  cli      - Build only CLI tool
+  all        - Build all executables (default)
+  api        - Build only API server
+  worker     - Build only background worker
+  cli        - Build only CLI tool
+  migration  - Build only migration tool
 
 Examples:
   echonext build
   echonext build --target=api
   echonext build --output=./dist`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Printf("🔨 Building %s to %s...\n", target, output)
-			// TODO: Implement build functionality
-			return fmt.Errorf("build command not yet implemented")
+			return runBuild(target, output)
 		},
 	}
 
-	cmd.Flags().StringVarP(&target, "target", "t", "all", "Build target (all, api, worker, cli)")
+	cmd.Flags().StringVarP(&target, "target", "t", "all", "Build target (all, api, worker, cli, migration)")
 	cmd.Flags().StringVarP(&output, "output", "o", "./bin", "Output directory")
 
 	return cmd
