@@ -16,9 +16,10 @@ import (
 // App represents an EchoNext application
 type App struct {
 	*echo.Echo
-	spec      *openapi3.T
-	validator *validator.Validate
-	routes    []RouteInfo
+	spec           *openapi3.T
+	validator      *validator.Validate
+	routes         []RouteInfo
+	globalSecurity *GlobalSecurityConfig
 }
 
 // Group represents a route group with type-safe handlers
@@ -43,23 +44,55 @@ type RouteInfo struct {
 
 // Route configures route metadata for OpenAPI generation
 type Route struct {
-	Summary         string
-	Description     string
-	Tags            []string
-	Security        []Security
-	SuccessStatus   int
-	RequestHeaders  map[string]HeaderInfo
-	ResponseHeaders map[string]HeaderInfo
-	ContentTypes    []string
-	Examples        map[string]interface{}
+	Summary               string
+	Description           string
+	Tags                  []string
+	Security              []SecurityRequirement
+	SuccessStatus         int
+	RequestHeaders        map[string]HeaderInfo
+	ResponseHeaders       map[string]HeaderInfo
+	ContentTypes          []string
+	Examples              map[string]interface{}
+	DisableGlobalSecurity bool // When true, disables global security for this route
 }
 
-// Security defines security requirements for a route
+// Security defines a security scheme configuration for OpenAPI
 type Security struct {
-	Type   string // "bearer", "apiKey", "oauth2", "basic"
-	Name   string // For apiKey: header/query/cookie name
-	Scheme string // For bearer: "bearer", for basic: "basic"
-	In     string // For apiKey: "header", "query", "cookie"
+	Type             string       // "bearer", "apiKey", "oauth2", "basic", "openIdConnect"
+	Name             string       // For apiKey: header/query/cookie name
+	Scheme           string       // For bearer: "bearer", for basic: "basic"
+	In               string       // For apiKey: "header", "query", "cookie"
+	Description      string       // Human-readable description for the security scheme
+	OAuth2Flows      *OAuth2Flows // OAuth2 flow configuration (required for oauth2 type)
+	OpenIDConnectURL string       // OpenID Connect discovery URL (required for openIdConnect type)
+}
+
+// OAuth2Flows configures OAuth2 authentication flows
+type OAuth2Flows struct {
+	Implicit          *OAuth2Flow // Implicit flow configuration
+	Password          *OAuth2Flow // Password (Resource Owner Password Credentials) flow
+	ClientCredentials *OAuth2Flow // Client Credentials flow configuration
+	AuthorizationCode *OAuth2Flow // Authorization Code flow configuration
+}
+
+// OAuth2Flow represents a single OAuth2 flow configuration
+type OAuth2Flow struct {
+	AuthorizationURL string            // Authorization endpoint URL (required for implicit and authorizationCode)
+	TokenURL         string            // Token endpoint URL (required for password, clientCredentials, authorizationCode)
+	RefreshURL       string            // Optional refresh token endpoint URL
+	Scopes           map[string]string // Maps scope names to their descriptions
+}
+
+// SecurityRequirement references a security scheme by name with optional scopes
+type SecurityRequirement struct {
+	SchemeName string   // References a scheme registered via AddSecurityScheme
+	Scopes     []string // Required scopes for this security requirement
+}
+
+// GlobalSecurityConfig defines default security settings for all routes
+type GlobalSecurityConfig struct {
+	Requirements     []SecurityRequirement // Default security requirements
+	ApplyToAllRoutes bool                  // When true, applies to all routes by default
 }
 
 // HeaderInfo describes a header parameter
@@ -156,12 +189,14 @@ func (app *App) SetServers(servers []Server) {
 }
 
 // AddSecurityScheme adds a security scheme to the OpenAPI spec
-func (app *App) AddSecurityScheme(name string, security Security) {
+func (app *App) AddSecurityScheme(name string, security Security) error {
 	if app.spec.Components.SecuritySchemes == nil {
 		app.spec.Components.SecuritySchemes = make(openapi3.SecuritySchemes)
 	}
 
-	scheme := &openapi3.SecurityScheme{}
+	scheme := &openapi3.SecurityScheme{
+		Description: security.Description,
+	}
 
 	switch security.Type {
 	case "bearer":
@@ -174,17 +209,165 @@ func (app *App) AddSecurityScheme(name string, security Security) {
 		scheme.Type = "apiKey"
 		scheme.Name = security.Name
 		scheme.In = security.In
+		if scheme.In == "" {
+			scheme.In = "header" // Default to header
+		}
 	case "basic":
 		scheme.Type = "http"
 		scheme.Scheme = "basic"
 	case "oauth2":
+		if security.OAuth2Flows == nil {
+			return fmt.Errorf("OAuth2 security scheme requires OAuth2Flows configuration")
+		}
 		scheme.Type = "oauth2"
-		// OAuth2 flows would need additional configuration
+		scheme.Flows = convertOAuth2Flows(security.OAuth2Flows)
+	case "openIdConnect":
+		if security.OpenIDConnectURL == "" {
+			return fmt.Errorf("OpenID Connect security scheme requires OpenIDConnectURL")
+		}
+		scheme.Type = "openIdConnect"
+		scheme.OpenIdConnectUrl = security.OpenIDConnectURL
+	default:
+		return fmt.Errorf("unsupported security type: %s", security.Type)
 	}
 
 	app.spec.Components.SecuritySchemes[name] = &openapi3.SecuritySchemeRef{
 		Value: scheme,
 	}
+	return nil
+}
+
+// convertOAuth2Flows converts internal OAuth2Flows to openapi3.OAuthFlows
+func convertOAuth2Flows(flows *OAuth2Flows) *openapi3.OAuthFlows {
+	if flows == nil {
+		return nil
+	}
+
+	result := &openapi3.OAuthFlows{}
+
+	if flows.Implicit != nil {
+		result.Implicit = &openapi3.OAuthFlow{
+			AuthorizationURL: flows.Implicit.AuthorizationURL,
+			RefreshURL:       flows.Implicit.RefreshURL,
+			Scopes:           flows.Implicit.Scopes,
+		}
+	}
+
+	if flows.Password != nil {
+		result.Password = &openapi3.OAuthFlow{
+			TokenURL:   flows.Password.TokenURL,
+			RefreshURL: flows.Password.RefreshURL,
+			Scopes:     flows.Password.Scopes,
+		}
+	}
+
+	if flows.ClientCredentials != nil {
+		result.ClientCredentials = &openapi3.OAuthFlow{
+			TokenURL:   flows.ClientCredentials.TokenURL,
+			RefreshURL: flows.ClientCredentials.RefreshURL,
+			Scopes:     flows.ClientCredentials.Scopes,
+		}
+	}
+
+	if flows.AuthorizationCode != nil {
+		result.AuthorizationCode = &openapi3.OAuthFlow{
+			AuthorizationURL: flows.AuthorizationCode.AuthorizationURL,
+			TokenURL:         flows.AuthorizationCode.TokenURL,
+			RefreshURL:       flows.AuthorizationCode.RefreshURL,
+			Scopes:           flows.AuthorizationCode.Scopes,
+		}
+	}
+
+	return result
+}
+
+// SetGlobalSecurity sets default security requirements for all routes
+func (app *App) SetGlobalSecurity(requirements ...SecurityRequirement) error {
+	// Validate all scheme names exist
+	for _, req := range requirements {
+		if err := app.validateSecurityRequirement(req); err != nil {
+			return err
+		}
+	}
+
+	app.globalSecurity = &GlobalSecurityConfig{
+		Requirements:     requirements,
+		ApplyToAllRoutes: true,
+	}
+
+	// Also set global security in OpenAPI spec
+	app.spec.Security = openapi3.SecurityRequirements{}
+	for _, req := range requirements {
+		scopes := req.Scopes
+		if scopes == nil {
+			scopes = []string{}
+		}
+		app.spec.Security = append(app.spec.Security, openapi3.SecurityRequirement{
+			req.SchemeName: scopes,
+		})
+	}
+
+	return nil
+}
+
+// ClearGlobalSecurity removes all global security requirements
+func (app *App) ClearGlobalSecurity() {
+	app.globalSecurity = nil
+	app.spec.Security = nil
+}
+
+// validateSecurityRequirement validates that a security requirement references a valid scheme
+func (app *App) validateSecurityRequirement(req SecurityRequirement) error {
+	if app.spec.Components.SecuritySchemes == nil {
+		return fmt.Errorf("security scheme '%s' not found: no security schemes registered", req.SchemeName)
+	}
+	if _, exists := app.spec.Components.SecuritySchemes[req.SchemeName]; !exists {
+		return fmt.Errorf("security scheme '%s' not found", req.SchemeName)
+	}
+	return nil
+}
+
+// resolveRouteSecurity determines the security requirements for a route
+func (app *App) resolveRouteSecurity(route RouteInfo) openapi3.SecurityRequirements {
+	var requirements openapi3.SecurityRequirements
+
+	// Route-specific security takes precedence
+	if route.RouteConfig != nil && len(route.RouteConfig.Security) > 0 {
+		for _, req := range route.RouteConfig.Security {
+			// Validate scheme exists - skip invalid schemes
+			if err := app.validateSecurityRequirement(req); err != nil {
+				continue
+			}
+			scopes := req.Scopes
+			if scopes == nil {
+				scopes = []string{}
+			}
+			requirements = append(requirements, openapi3.SecurityRequirement{
+				req.SchemeName: scopes,
+			})
+		}
+		return requirements
+	}
+
+	// Check if global security is disabled for this route
+	if route.RouteConfig != nil && route.RouteConfig.DisableGlobalSecurity {
+		return nil
+	}
+
+	// Apply global security if configured
+	if app.globalSecurity != nil && app.globalSecurity.ApplyToAllRoutes {
+		for _, req := range app.globalSecurity.Requirements {
+			scopes := req.Scopes
+			if scopes == nil {
+				scopes = []string{}
+			}
+			requirements = append(requirements, openapi3.SecurityRequirement{
+				req.SchemeName: scopes,
+			})
+		}
+	}
+
+	return requirements
 }
 
 // GET registers a typed GET endpoint
@@ -497,22 +680,13 @@ func (app *App) addRouteToSpec(route RouteInfo) {
 		Security:    &openapi3.SecurityRequirements{},
 	}
 
-	// Add security requirements if specified
-	if route.RouteConfig != nil && len(route.RouteConfig.Security) > 0 {
-		for _, sec := range route.RouteConfig.Security {
-			secReq := openapi3.SecurityRequirement{}
-			switch sec.Type {
-			case "bearer":
-				secReq["bearerAuth"] = []string{}
-			case "apiKey":
-				if sec.Name != "" {
-					secReq[sec.Name] = []string{}
-				}
-			case "basic":
-				secReq["basicAuth"] = []string{}
-			}
-			*operation.Security = append(*operation.Security, secReq)
-		}
+	// Resolve and apply security requirements
+	securityReqs := app.resolveRouteSecurity(route)
+	if len(securityReqs) > 0 {
+		operation.Security = &securityReqs
+	} else if route.RouteConfig != nil && route.RouteConfig.DisableGlobalSecurity {
+		// Empty security for public endpoints (explicitly disabled)
+		operation.Security = &openapi3.SecurityRequirements{}
 	}
 
 	// Extract path parameters

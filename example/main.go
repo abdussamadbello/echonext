@@ -101,14 +101,16 @@ func main() {
 	})
 
 	// Add security schemes
-	app.AddSecurityScheme("bearerAuth", echonext.Security{
-		Type:   "bearer",
-		Scheme: "JWT",
+	_ = app.AddSecurityScheme("bearerAuth", echonext.Security{
+		Type:        "bearer",
+		Scheme:      "JWT",
+		Description: "JWT Bearer token authentication",
 	})
-	app.AddSecurityScheme("apiKeyAuth", echonext.Security{
-		Type: "apiKey",
-		Name: "X-API-Key",
-		In:   "header",
+	_ = app.AddSecurityScheme("apiKeyAuth", echonext.Security{
+		Type:        "apiKey",
+		Name:        "X-API-Key",
+		In:          "header",
+		Description: "API key for service identification",
 	})
 
 	// Add middleware
@@ -136,8 +138,8 @@ func main() {
 		Description:   "Creates a new todo item with the provided title and description",
 		Tags:          []string{"Todos"},
 		SuccessStatus: 201,
-		Security: []echonext.Security{
-			{Type: "bearer"},
+		Security: []echonext.SecurityRequirement{
+			{SchemeName: "bearerAuth"},
 		},
 		RequestHeaders: map[string]echonext.HeaderInfo{
 			"X-Request-ID": {
@@ -176,9 +178,9 @@ func main() {
 		Summary:     "Update todo",
 		Description: "Updates an existing todo item",
 		Tags:        []string{"Todos"},
-		Security: []echonext.Security{
-			{Type: "bearer"},
-			{Type: "apiKey", Name: "X-API-Key"},
+		Security: []echonext.SecurityRequirement{
+			{SchemeName: "bearerAuth"},
+			{SchemeName: "apiKeyAuth"},
 		},
 	})
 
@@ -187,8 +189,8 @@ func main() {
 		Description:   "Deletes a todo item by its ID",
 		Tags:          []string{"Todos"},
 		SuccessStatus: 204,
-		Security: []echonext.Security{
-			{Type: "bearer"},
+		Security: []echonext.SecurityRequirement{
+			{SchemeName: "bearerAuth"},
 		},
 	})
 

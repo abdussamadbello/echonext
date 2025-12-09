@@ -178,28 +178,32 @@ func (g *ProjectGenerator) generateStandardProject() error {
 
 	// Generate files
 	files := map[string]string{
-		"go.mod":                           g.generateGoMod(),
-		"README.md":                        g.generateReadme(),
-		"Makefile":                         g.generateMakefile(),
+		"go.mod":                             g.generateGoMod(),
+		"README.md":                          g.generateReadme(),
+		"Makefile":                           g.generateMakefile(),
+		"atlas.hcl":                          g.generateAtlasConfig(),
+		"schema.hcl":                         g.generateSchemaHCL(),
 		"infrastructure/docker-compose.yml": g.generateDockerCompose(),
 		"infrastructure/Dockerfile.api":     g.generateDockerfileAPI(),
 		"infrastructure/Dockerfile.worker":  g.generateDockerfileWorker(),
-		".gitignore":                       g.generateGitignore(),
-		"cmd/api/main.go":           g.generateAPIMain(),
-		"cmd/worker/main.go":        g.generateWorkerMain(),
-		"cmd/cli/main.go":           g.generateCLIMain(),
-		"cmd/migration/main.go":     g.generateMigrationMain(),
-		"internal/config/config.go": g.generateConfig(),
-		"internal/database/database.go": g.generateDatabase(),
-		"internal/server/server.go": g.generateServer(),
-		"configs/development.yaml":  g.generateConfigYAML("development"),
-		"configs/production.yaml":   g.generateConfigYAML("production"),
-		"configs/test.yaml":         g.generateConfigYAML("test"),
-		"domain/user/model.go":      g.generateUserModel(),
-		"domain/user/service.go":    g.generateUserService(),
-		"domain/user/handler.go":    g.generateUserHandler(),
-		"domain/user/dto.go":        g.generateUserDTO(),
-		"domain/user/service_test.go": g.generateUserTest(),
+		".gitignore":                         g.generateGitignore(),
+		"cmd/api/main.go":                    g.generateAPIMain(),
+		"cmd/worker/main.go":                 g.generateWorkerMain(),
+		"cmd/cli/main.go":                    g.generateCLIMain(),
+		"cmd/migration/main.go":              g.generateMigrationMain(),
+		"internal/config/config.go":          g.generateConfig(),
+		"internal/database/database.go":      g.generateDatabase(),
+		"internal/server/server.go":          g.generateServer(),
+		"configs/development.yaml":           g.generateConfigYAML("development"),
+		"configs/production.yaml":            g.generateConfigYAML("production"),
+		"configs/test.yaml":                  g.generateConfigYAML("test"),
+		"domain/user/model.go":               g.generateUserModel(),
+		"domain/user/service.go":             g.generateUserService(),
+		"domain/user/handler.go":             g.generateUserHandler(),
+		"domain/user/dto.go":                 g.generateUserDTO(),
+		"domain/user/service_test.go":        g.generateUserTest(),
+		"migrations/00001_initial.sql":       g.generateInitialMigration(),
+		"migrations/atlas.sum":               g.generateAtlasSum(),
 	}
 
 	for filePath, content := range files {
@@ -213,7 +217,10 @@ func (g *ProjectGenerator) generateStandardProject() error {
 	fmt.Printf("Next steps:\n")
 	fmt.Printf("  cd %s\n", g.Name)
 	fmt.Printf("  go mod tidy\n")
-	fmt.Printf("  make run-api\n\n")
+	fmt.Printf("  export DATABASE_URL='postgres://user:pass@localhost:5432/%s_dev?sslmode=disable'\n", g.Name)
+	fmt.Printf("  make dev-db      # Start PostgreSQL with Docker\n")
+	fmt.Printf("  make db-migrate  # Run database migrations\n")
+	fmt.Printf("  make run-api     # Start the API server\n\n")
 	fmt.Printf("Documentation will be available at http://localhost:8080/api/docs\n")
 
 	return nil

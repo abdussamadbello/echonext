@@ -381,6 +381,7 @@ GORM integration helpers with:
 - Generic Repository[T] pattern
 - Transaction utilities
 - Migration helpers
+- **Atlas integration** for schema migrations
 
 ```go
 import "github.com/abdussamadbello/echonext/pkg/contrib/database"
@@ -393,6 +394,40 @@ userRepo := database.NewRepository[User](db)
 user, err := userRepo.Find(1)
 users, err := userRepo.Where("active = ?", true).FindAll()
 ```
+
+### 🔄 Database Migrations (Atlas)
+
+EchoNext uses [Atlas](https://atlasgo.io) for database schema management:
+
+```bash
+# Initialize Atlas in your project
+echonext db init
+
+# Apply migrations
+echonext db migrate
+
+# Generate migration from schema changes
+echonext db migrate:diff add_users_table
+
+# Check migration status
+echonext db migrate:status
+
+# Rollback migrations
+echonext db migrate:down --count=1
+```
+
+**Declarative Schema** - Define your schema in `schema.hcl`:
+
+```hcl
+table "users" {
+  schema = schema.public
+  column "id" { type = bigserial }
+  column "email" { type = varchar(255) }
+  primary_key { columns = [column.id] }
+}
+```
+
+See [CLAUDE.md](CLAUDE.md#database-migrations-with-atlas) for detailed Atlas documentation.
 
 ### ⚙️ Config (`pkg/contrib/config`)
 
@@ -500,6 +535,7 @@ MIT License - see the [LICENSE](LICENSE) file for details.
 - [x] ✅ CLI tool for project generation (`echonext init`)
 - [x] ✅ Code generation commands (`echonext generate domain/handler/service/model/dto`)
 - [x] ✅ Database management commands (`echonext db init/migrate/seed`)
+- [x] ✅ Atlas migration integration for schema management
 - [x] ✅ Complete example projects (Todo, Blog, E-commerce, Microservices)
 
 **Planned:**

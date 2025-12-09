@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -268,39 +269,69 @@ func runGenerateOtel(cmd *cobra.Command, args []string) {
 // Database command implementations
 
 func runDBInit(cmd *cobra.Command, args []string) {
-	fmt.Println("🔨 Initializing database configuration...")
+	fmt.Println("🔨 Initializing Atlas migration setup...")
 
 	if !isEchoNextProject() {
 		log.Fatal("❌ Not in an EchoNext project")
 	}
 
+	module, err := getModuleName()
+	if err != nil {
+		log.Fatalf("❌ Failed to read module name: %v", err)
+	}
+
+	// Extract project name from module
+	parts := strings.Split(module, "/")
+	projectName := parts[len(parts)-1]
+
+	// Check if Atlas is installed
+	if !isAtlasInstalled() {
+		fmt.Println("⚠️  Atlas CLI is not installed.")
+		fmt.Println("\nInstall Atlas using one of these methods:")
+		fmt.Println("  macOS:  brew install ariga/tap/atlas")
+		fmt.Println("  Linux:  curl -sSf https://atlasgo.sh | sh")
+		fmt.Println("  Docker: docker pull arigaio/atlas")
+		fmt.Println("\nFor more info: https://atlasgo.io/getting-started/")
+		fmt.Println("\n⏳ Continuing with file generation...")
+	}
+
+	// Create migrations directory
 	migrationsDir := "migrations"
 	if err := os.MkdirAll(migrationsDir, 0755); err != nil {
 		log.Fatalf("❌ Failed to create migrations directory: %v", err)
 	}
 	fmt.Printf("  ✅ Created %s/\n", migrationsDir)
 
-	sampleMigration := filepath.Join(migrationsDir, "001_initial_schema.sql")
-	migrationContent := `-- Initial schema migration
--- Add your SQL migrations here
-
--- Example:
--- CREATE TABLE IF NOT EXISTS users (
---     id SERIAL PRIMARY KEY,
---     name VARCHAR(255) NOT NULL,
---     email VARCHAR(255) UNIQUE NOT NULL,
---     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
--- );
-
--- CREATE INDEX idx_users_email ON users(email);
-`
-
-	if err := os.WriteFile(sampleMigration, []byte(migrationContent), 0644); err != nil {
-		log.Fatalf("❌ Failed to write migration file: %v", err)
+	// Create atlas.hcl configuration
+	atlasConfig := generateAtlasConfig(projectName)
+	if err := os.WriteFile("atlas.hcl", []byte(atlasConfig), 0644); err != nil {
+		log.Fatalf("❌ Failed to write atlas.hcl: %v", err)
 	}
-	fmt.Printf("  ✅ Created %s\n", sampleMigration)
+	fmt.Println("  ✅ Created atlas.hcl")
 
+	// Create schema.hcl
+	schemaHCL := generateSchemaHCL(projectName)
+	if err := os.WriteFile("schema.hcl", []byte(schemaHCL), 0644); err != nil {
+		log.Fatalf("❌ Failed to write schema.hcl: %v", err)
+	}
+	fmt.Println("  ✅ Created schema.hcl")
+
+	// Create initial migration
+	initialMigration := generateInitialMigration(projectName)
+	migrationFile := filepath.Join(migrationsDir, "00001_initial.sql")
+	if err := os.WriteFile(migrationFile, []byte(initialMigration), 0644); err != nil {
+		log.Fatalf("❌ Failed to write initial migration: %v", err)
+	}
+	fmt.Printf("  ✅ Created %s\n", migrationFile)
+
+	// Create atlas.sum placeholder
+	sumFile := filepath.Join(migrationsDir, "atlas.sum")
+	if err := os.WriteFile(sumFile, []byte("h1:placeholder\n"), 0644); err != nil {
+		log.Fatalf("❌ Failed to write atlas.sum: %v", err)
+	}
+	fmt.Printf("  ✅ Created %s\n", sumFile)
+
+	// Create seeds directory
 	seedsDir := filepath.Join("internal", "database", "seeds")
 	if err := os.MkdirAll(seedsDir, 0755); err != nil {
 		log.Fatalf("❌ Failed to create seeds directory: %v", err)
@@ -308,10 +339,10 @@ func runDBInit(cmd *cobra.Command, args []string) {
 	fmt.Printf("  ✅ Created %s/\n", seedsDir)
 
 	sampleSeed := filepath.Join(seedsDir, "seeds.go")
-	seedContent := `package seeds
+	if _, err := os.Stat(sampleSeed); os.IsNotExist(err) {
+		seedContent := `package seeds
 
 import (
-	"fmt"
 	"log"
 
 	"gorm.io/gorm"
@@ -319,50 +350,214 @@ import (
 
 // Run executes all seed functions
 func Run(db *gorm.DB) error {
-	log.Println("🌱 Seeding database...")
+	log.Println("Seeding database...")
 
 	// Add your seed functions here
 	// if err := seedUsers(db); err != nil {
 	// 	return err
 	// }
 
-	log.Println("✅ Database seeded successfully")
+	log.Println("Database seeded successfully")
 	return nil
 }
 `
-
-	if err := os.WriteFile(sampleSeed, []byte(seedContent), 0644); err != nil {
-		log.Fatalf("❌ Failed to write seed file: %v", err)
+		if err := os.WriteFile(sampleSeed, []byte(seedContent), 0644); err != nil {
+			log.Fatalf("❌ Failed to write seed file: %v", err)
+		}
+		fmt.Printf("  ✅ Created %s\n", sampleSeed)
 	}
-	fmt.Printf("  ✅ Created %s\n", sampleSeed)
 
-	fmt.Println("\n✨ Database configuration initialized!")
+	fmt.Println("\n✨ Atlas migration setup initialized!")
 	fmt.Println("\nNext steps:")
-	fmt.Println("  1. Update your database configuration in configs/development.yaml")
-	fmt.Println("  2. Add your migrations to migrations/")
-	fmt.Println("  3. Run 'go run ./cmd/migration up' to apply migrations")
-	fmt.Println("  4. Run 'go run ./cmd/migration seed' to seed data")
+	fmt.Println("  1. Set DATABASE_URL environment variable")
+	fmt.Println("     export DATABASE_URL='postgres://user:pass@localhost:5432/dbname?sslmode=disable'")
+	fmt.Println("  2. Update schema.hcl with your database schema")
+	fmt.Println("  3. Generate migrations from schema changes:")
+	fmt.Println("     echonext db migrate:diff my_changes")
+	fmt.Println("  4. Apply migrations:")
+	fmt.Println("     echonext db migrate")
+	fmt.Println("\nUseful commands:")
+	fmt.Println("  echonext db migrate:status  - Check migration status")
+	fmt.Println("  echonext db migrate:lint    - Lint migrations for issues")
+	fmt.Println("  echonext db schema:inspect  - View current database schema")
 }
 
-func runDBMigrate(cmd *cobra.Command, args []string) {
+func runDBMigrate(cmd *cobra.Command, args []string, dryRun bool, env string) {
 	fmt.Println("🔄 Running database migrations...")
 
 	if !isEchoNextProject() {
 		log.Fatal("❌ Not in an EchoNext project")
 	}
 
-	migrationCmd := filepath.Join("cmd", "migration", "main.go")
-	if _, err := os.Stat(migrationCmd); os.IsNotExist(err) {
-		fmt.Println("⚠️  Migration command not found.")
-		fmt.Println("\n💡 Use: go run ./cmd/migration up")
-		return
+	if !isAtlasInstalled() {
+		log.Fatal("❌ Atlas CLI is not installed. Run 'echonext db init' for installation instructions.")
 	}
 
-	fmt.Println("💡 Run: go run ./cmd/migration up")
-	fmt.Println("\nAvailable migration commands:")
-	fmt.Println("  go run ./cmd/migration up      - Run all pending migrations")
-	fmt.Println("  go run ./cmd/migration down    - Rollback last migration")
-	fmt.Println("  go run ./cmd/migration status  - Check migration status")
+	atlasArgs := []string{"migrate", "apply", "--dir", "file://migrations", "--env", env}
+
+	if dryRun {
+		atlasArgs = append(atlasArgs, "--dry-run")
+		fmt.Println("📋 Dry run mode - no changes will be applied")
+	}
+
+	// Check for atlas.hcl
+	if _, err := os.Stat("atlas.hcl"); err == nil {
+		atlasArgs = append(atlasArgs, "-c", "file://atlas.hcl")
+	}
+
+	if err := runAtlasCommand(atlasArgs...); err != nil {
+		log.Fatalf("❌ Migration failed: %v", err)
+	}
+
+	if !dryRun {
+		fmt.Println("✅ Migrations applied successfully")
+	}
+}
+
+func runDBMigrateStatus(cmd *cobra.Command, args []string, env string) {
+	fmt.Println("📊 Migration status:")
+
+	if !isEchoNextProject() {
+		log.Fatal("❌ Not in an EchoNext project")
+	}
+
+	if !isAtlasInstalled() {
+		log.Fatal("❌ Atlas CLI is not installed. Run 'echonext db init' for installation instructions.")
+	}
+
+	atlasArgs := []string{"migrate", "status", "--dir", "file://migrations", "--env", env}
+
+	if _, err := os.Stat("atlas.hcl"); err == nil {
+		atlasArgs = append(atlasArgs, "-c", "file://atlas.hcl")
+	}
+
+	if err := runAtlasCommand(atlasArgs...); err != nil {
+		log.Fatalf("❌ Failed to get migration status: %v", err)
+	}
+}
+
+func runDBMigrateNew(cmd *cobra.Command, args []string) {
+	name := args[0]
+	fmt.Printf("📝 Creating new migration '%s'...\n", name)
+
+	if !isEchoNextProject() {
+		log.Fatal("❌ Not in an EchoNext project")
+	}
+
+	if !isAtlasInstalled() {
+		log.Fatal("❌ Atlas CLI is not installed. Run 'echonext db init' for installation instructions.")
+	}
+
+	atlasArgs := []string{"migrate", "new", name, "--dir", "file://migrations"}
+
+	if err := runAtlasCommand(atlasArgs...); err != nil {
+		log.Fatalf("❌ Failed to create migration: %v", err)
+	}
+
+	fmt.Println("✅ Migration file created")
+	fmt.Println("\n💡 Edit the migration file in migrations/ directory")
+	fmt.Println("   Then run 'atlas migrate hash' to update the checksum")
+}
+
+func runDBMigrateDiff(cmd *cobra.Command, args []string, env string) {
+	name := args[0]
+	fmt.Printf("🔍 Generating migration '%s' from schema diff...\n", name)
+
+	if !isEchoNextProject() {
+		log.Fatal("❌ Not in an EchoNext project")
+	}
+
+	if !isAtlasInstalled() {
+		log.Fatal("❌ Atlas CLI is not installed. Run 'echonext db init' for installation instructions.")
+	}
+
+	// Check for schema.hcl
+	if _, err := os.Stat("schema.hcl"); os.IsNotExist(err) {
+		log.Fatal("❌ schema.hcl not found. Run 'echonext db init' first.")
+	}
+
+	atlasArgs := []string{"migrate", "diff", name, "--dir", "file://migrations", "--env", env}
+
+	if _, err := os.Stat("atlas.hcl"); err == nil {
+		atlasArgs = append(atlasArgs, "-c", "file://atlas.hcl")
+	}
+
+	if err := runAtlasCommand(atlasArgs...); err != nil {
+		log.Fatalf("❌ Failed to generate migration: %v", err)
+	}
+
+	fmt.Println("✅ Migration generated from schema diff")
+	fmt.Println("\n💡 Review the generated migration in migrations/ directory")
+}
+
+func runDBMigrateDown(cmd *cobra.Command, args []string, count int, env string) {
+	fmt.Printf("⬇️  Rolling back %d migration(s)...\n", count)
+
+	if !isEchoNextProject() {
+		log.Fatal("❌ Not in an EchoNext project")
+	}
+
+	if !isAtlasInstalled() {
+		log.Fatal("❌ Atlas CLI is not installed. Run 'echonext db init' for installation instructions.")
+	}
+
+	atlasArgs := []string{"migrate", "down", fmt.Sprintf("%d", count), "--dir", "file://migrations", "--env", env}
+
+	if _, err := os.Stat("atlas.hcl"); err == nil {
+		atlasArgs = append(atlasArgs, "-c", "file://atlas.hcl")
+	}
+
+	if err := runAtlasCommand(atlasArgs...); err != nil {
+		log.Fatalf("❌ Rollback failed: %v", err)
+	}
+
+	fmt.Println("✅ Migration(s) rolled back successfully")
+}
+
+func runDBMigrateLint(cmd *cobra.Command, args []string) {
+	fmt.Println("🔍 Linting migrations...")
+
+	if !isEchoNextProject() {
+		log.Fatal("❌ Not in an EchoNext project")
+	}
+
+	if !isAtlasInstalled() {
+		log.Fatal("❌ Atlas CLI is not installed. Run 'echonext db init' for installation instructions.")
+	}
+
+	atlasArgs := []string{"migrate", "lint", "--dir", "file://migrations", "--latest", "1"}
+
+	if _, err := os.Stat("atlas.hcl"); err == nil {
+		atlasArgs = append(atlasArgs, "-c", "file://atlas.hcl")
+	}
+
+	if err := runAtlasCommand(atlasArgs...); err != nil {
+		log.Fatalf("❌ Lint check failed: %v", err)
+	}
+
+	fmt.Println("✅ No issues found")
+}
+
+func runDBSchemaInspect(cmd *cobra.Command, args []string, env string) {
+	fmt.Println("🔍 Inspecting database schema...")
+
+	if !isEchoNextProject() {
+		log.Fatal("❌ Not in an EchoNext project")
+	}
+
+	if !isAtlasInstalled() {
+		log.Fatal("❌ Atlas CLI is not installed. Run 'echonext db init' for installation instructions.")
+	}
+
+	atlasArgs := []string{"schema", "inspect", "--env", env, "--format", "{{ sql . }}"}
+
+	if _, err := os.Stat("atlas.hcl"); err == nil {
+		atlasArgs = append(atlasArgs, "-c", "file://atlas.hcl")
+	}
+
+	if err := runAtlasCommand(atlasArgs...); err != nil {
+		log.Fatalf("❌ Schema inspection failed: %v", err)
+	}
 }
 
 func runDBSeed(cmd *cobra.Command, args []string) {
@@ -380,6 +575,186 @@ func runDBSeed(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Println("💡 Run: go run ./cmd/migration seed")
+}
+
+// Atlas helper functions
+
+func isAtlasInstalled() bool {
+	_, err := exec.LookPath("atlas")
+	return err == nil
+}
+
+func runAtlasCommand(args ...string) error {
+	cmd := exec.Command("atlas", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	return cmd.Run()
+}
+
+func generateAtlasConfig(projectName string) string {
+	return fmt.Sprintf(`// Atlas configuration for %s
+// Documentation: https://atlasgo.io/atlas-schema/hcl
+
+// Define development environment
+env "local" {
+  // Use PostgreSQL as the database driver
+  src = "file://schema.hcl"
+
+  // Development database URL - loaded from environment variable
+  url = getenv("DATABASE_URL")
+
+  // Dev database for schema diff calculations
+  dev = "docker://postgres/16/dev?search_path=public"
+
+  // Migration directory
+  migration {
+    dir = "file://migrations"
+  }
+
+  // Format migration files
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
+    }
+  }
+}
+
+// Define staging environment
+env "staging" {
+  src = "file://schema.hcl"
+  url = getenv("STAGING_DATABASE_URL")
+
+  migration {
+    dir = "file://migrations"
+  }
+}
+
+// Define production environment
+env "production" {
+  src = "file://schema.hcl"
+  url = getenv("PRODUCTION_DATABASE_URL")
+
+  migration {
+    dir = "file://migrations"
+  }
+
+  // Require approval for destructive changes in production
+  diff {
+    skip {
+      drop_column = true
+      drop_table  = true
+    }
+  }
+}
+
+// Lint configuration for migration validation
+lint {
+  // Detect destructive changes
+  destructive {
+    error = true
+  }
+
+  // Detect data-dependent changes
+  data_depend {
+    error = true
+  }
+
+  // Naming conventions
+  naming {
+    match   = "^[a-z]+(_[a-z]+)*$"
+    message = "must be lowercase with underscores"
+  }
+}
+`, projectName)
+}
+
+func generateSchemaHCL(projectName string) string {
+	return fmt.Sprintf(`// Database schema for %s
+// This file is the source of truth for your database schema.
+// Atlas will use this file to generate migrations.
+//
+// Documentation: https://atlasgo.io/atlas-schema/hcl
+
+// Users table
+table "users" {
+  schema = schema.public
+
+  column "id" {
+    null    = false
+    type    = bigserial
+  }
+
+  column "name" {
+    null = false
+    type = varchar(255)
+  }
+
+  column "email" {
+    null = false
+    type = varchar(255)
+  }
+
+  column "created_at" {
+    null    = false
+    type    = timestamptz
+    default = sql("CURRENT_TIMESTAMP")
+  }
+
+  column "updated_at" {
+    null    = false
+    type    = timestamptz
+    default = sql("CURRENT_TIMESTAMP")
+  }
+
+  column "deleted_at" {
+    null = true
+    type = timestamptz
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "idx_users_email" {
+    unique  = true
+    columns = [column.email]
+    where   = "deleted_at IS NULL"
+  }
+
+  index "idx_users_deleted_at" {
+    columns = [column.deleted_at]
+  }
+}
+
+// Schema definition
+schema "public" {
+  comment = "%s database schema"
+}
+`, projectName, projectName)
+}
+
+func generateInitialMigration(projectName string) string {
+	return fmt.Sprintf(`-- Migration: Initial schema for %s
+-- Created by: echonext db init
+
+-- Create users table
+CREATE TABLE IF NOT EXISTS "users" (
+    "id" bigserial NOT NULL,
+    "name" varchar(255) NOT NULL,
+    "email" varchar(255) NOT NULL,
+    "created_at" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" timestamptz NULL,
+    PRIMARY KEY ("id")
+);
+
+-- Create unique index on email for active users
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_users_email" ON "users" ("email") WHERE "deleted_at" IS NULL;
+
+-- Create index on deleted_at for soft delete queries
+CREATE INDEX IF NOT EXISTS "idx_users_deleted_at" ON "users" ("deleted_at");
+`, projectName)
 }
 
 // Helper functions

@@ -67,6 +67,72 @@ err = database.WithTx(db, func(tx *gorm.DB) error {
 err = database.AutoMigrate(db, &User{})
 ```
 
+#### Atlas Migrations
+
+The database package includes Atlas integration for declarative schema migrations:
+
+```go
+import "github.com/abdussamadbello/echonext/pkg/contrib/database"
+
+// Create Atlas instance
+atlas := database.NewAtlas(&database.AtlasConfig{
+    Dir:        "migrations",
+    ConfigFile: "atlas.hcl",
+    Env:        "local",
+    URL:        os.Getenv("DATABASE_URL"),
+})
+
+// Apply migrations
+err := atlas.Apply(ctx)
+
+// Check migration status
+status, err := atlas.Status(ctx)
+
+// Generate migration from schema diff
+output, err := atlas.Diff(ctx, "add_email_column")
+
+// Rollback last migration
+err = atlas.Down(ctx)
+
+// Lint migrations for issues
+err = atlas.Lint(ctx)
+
+// Check if Atlas CLI is installed
+if !database.IsAtlasInstalled() {
+    fmt.Println(database.InstallAtlas())
+}
+```
+
+**CLI Commands:**
+
+```bash
+# Initialize Atlas setup
+echonext db init
+
+# Apply migrations
+echonext db migrate
+echonext db migrate --dry-run
+echonext db migrate --env=production
+
+# Check status
+echonext db migrate:status
+
+# Generate migration from schema.hcl
+echonext db migrate:diff add_users_table
+
+# Create empty migration
+echonext db migrate:new custom_migration
+
+# Rollback
+echonext db migrate:down --count=1
+
+# Lint migrations
+echonext db migrate:lint
+
+# Inspect database schema
+echonext db schema:inspect
+```
+
 ### 2. Config (`pkg/contrib/config`)
 
 Viper integration helpers for configuration management.
@@ -272,6 +338,7 @@ Each package has its own dependencies:
 **Database:**
 - `gorm.io/gorm`
 - Database driver (e.g., `gorm.io/driver/postgres`)
+- [Atlas CLI](https://atlasgo.io) (optional, for migrations)
 
 **Config:**
 - `github.com/spf13/viper`

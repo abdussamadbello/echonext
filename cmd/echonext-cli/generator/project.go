@@ -101,3 +101,23 @@ func (g *ProjectGenerator) GenerateServer() (string, error) {
 func (g *ProjectGenerator) GenerateOTEL() (string, error) {
 	return g.engine.Execute("internal/otel.go.tmpl", g.data)
 }
+
+// GenerateAtlasConfig generates the atlas.hcl file content
+func (g *ProjectGenerator) GenerateAtlasConfig() (string, error) {
+	return g.engine.Execute("project/atlas.hcl.tmpl", g.data)
+}
+
+// GenerateSchemaHCL generates the schema.hcl file content
+func (g *ProjectGenerator) GenerateSchemaHCL() (string, error) {
+	return g.engine.Execute("project/schema.hcl.tmpl", g.data)
+}
+
+// GenerateInitialMigration generates the initial SQL migration file content
+func (g *ProjectGenerator) GenerateInitialMigration() (string, error) {
+	return g.engine.Execute("migrations/00001_initial.sql.tmpl", g.data)
+}
+
+// GenerateAtlasSum generates the atlas.sum file content
+func (g *ProjectGenerator) GenerateAtlasSum() (string, error) {
+	return g.engine.Execute("migrations/atlas.sum.tmpl", g.data)
+}
