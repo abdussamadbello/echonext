@@ -82,25 +82,28 @@ Examples:
 func newDevCmd() *cobra.Command {
 	var port int
 	var watch bool
+	var target string
 
 	cmd := &cobra.Command{
 		Use:   "dev",
 		Short: "Start development server with hot reload",
 		Long: `Start the API server in development mode with hot reload.
 
-The server will automatically restart when Go files change.`,
+The server will automatically restart when Go files change.
+
+Examples:
+  echonext dev                    # Start API server on port 8080
+  echonext dev --port=3000        # Start on port 3000
+  echonext dev --target=worker    # Start worker instead of api
+  echonext dev --watch=false      # Run without watching`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Printf("🚀 Starting development server on port %d...\n", port)
-			if watch {
-				fmt.Println("📁 Watching for file changes...")
-			}
-			// TODO: Implement hot reload functionality
-			return fmt.Errorf("dev command not yet implemented")
+			return runDev(port, watch, target)
 		},
 	}
 
 	cmd.Flags().IntVarP(&port, "port", "p", 8080, "Server port")
 	cmd.Flags().BoolVarP(&watch, "watch", "w", true, "Enable file watching")
+	cmd.Flags().StringVarP(&target, "target", "t", "api", "Build target (api, worker, cli, migration)")
 
 	return cmd
 }

@@ -25,10 +25,10 @@ Welcome to the EchoNext documentation! This comprehensive guide will help you bu
 - [Database Commands](./cli/database.md) - Manage databases and migrations
 
 ### Contrib Packages
-- [Database](./contrib/database.md) - GORM helpers and repository pattern
+- [Database](./contrib/database.md) - GORM helpers, repository pattern, and Atlas migrations
 - [Config](./contrib/config.md) - Configuration management with Viper
-- [Testing](./contrib/testing.md) - Testing utilities and helpers
-- [Middleware](./contrib/middleware.md) - Additional middleware helpers
+- [Testing](./contrib/testing.md) - APIClient, fixtures, factories, and test suites
+- [Middleware](./contrib/middleware.md) - RequestID, metrics, logging, and OpenTelemetry
 
 ### API Reference
 - [App API](./api-reference/app.md) - Core App methods and configuration

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### Atlas Integration for Database Migrations
+- ✅ Full [Atlas](https://atlasgo.io) integration for declarative schema management
+- ✅ `pkg/contrib/database/atlas.go` - Go wrapper for Atlas CLI
+- ✅ Declarative schema definition with `schema.hcl`
+- ✅ Environment-based configuration via `atlas.hcl`
+- ✅ CLI commands for migration management:
+  - `echonext db init` - Initialize Atlas setup
+  - `echonext db migrate` - Apply migrations with dry-run support
+  - `echonext db migrate:status` - Check migration status
+  - `echonext db migrate:new` - Create empty migration
+  - `echonext db migrate:diff` - Generate migrations from schema changes
+  - `echonext db migrate:down` - Rollback migrations
+  - `echonext db migrate:lint` - Lint for destructive changes
+  - `echonext db schema:inspect` - Inspect database schema
+
+#### Comprehensive Testing Utilities
+- ✅ **APIClient** - Fluent HTTP client for testing endpoints
+  - Support for GET, POST, PUT, PATCH, DELETE methods
+  - Bearer token and Basic authentication
+  - Custom header support with method chaining
+- ✅ **Response** - Rich response object with built-in assertions
+  - `AssertStatus`, `AssertSuccess`, `AssertError`, `AssertJSON`
+  - JSON parsing and header access
+- ✅ **Comprehensive test coverage** for all contrib packages:
+  - APIClient tests (all HTTP methods, auth, headers)
+  - Middleware tests (RequestID, Metrics, StructuredLogger)
+  - Response assertion tests
+
 ### Planned
 - Hot reload development command (`echonext dev`)
 - Enhanced test runner (`echonext test`)
@@ -46,31 +76,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✅ `echonext db seed` - Seed database with test data
 
 #### Contrib Packages
-- ✅ **Database** - GORM helpers and generic repository pattern
+- ✅ **Database** - GORM helpers, repository pattern, and Atlas integration
   - Connection management with retry logic
   - Repository[T] with CRUD operations
   - Transaction utilities (WithTx, WithTxResult)
   - Migration helpers
   - Connection pool configuration
-  
+  - Atlas CLI wrapper for declarative migrations
+
 - ✅ **Config** - Viper-based configuration management
   - Generic config loading with Load[T]
   - Environment variable binding
   - Hot reload support with Watch[T]
   - Standard config structures (AppConfig, DatabaseConfig, etc.)
   - Multiple config file format support
-  
-- ✅ **Testing** - Testing utilities and helpers
-  - APIClient for testing HTTP endpoints
+
+- ✅ **Testing** - Comprehensive testing utilities
+  - APIClient for testing HTTP endpoints with fluent interface
+  - Response object with built-in assertions
   - FixtureManager for test data management
-  - Factory pattern for test entity creation
+  - Factory[T] pattern for test entity creation
   - Suite base class with setup/teardown
   - IntegrationSuite with transaction rollback
-  
+  - Full test coverage for all utilities
+
 - ✅ **Middleware** - Additional Echo middleware helpers
-  - RequestID for request correlation
-  - Metrics collection and exposure
-  - Structured logging with context
+  - RequestID for request correlation (with comprehensive tests)
+  - Metrics collection and exposure (with comprehensive tests)
+  - Structured logging with context (with comprehensive tests)
   - OpenTelemetry instrumentation
   - Traced HTTP client for outgoing requests
 

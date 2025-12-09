@@ -31,10 +31,18 @@ echonext --version
 - `echonext generate middleware` - Generate custom middleware
 - `echonext generate otel` - Generate OpenTelemetry setup
 
-### Database Management
+### Database Management (Atlas)
 
-- `echonext db init` - Initialize database and migrations
-- `echonext db migrate` - Run database migrations
+EchoNext uses [Atlas](https://atlasgo.io) for declarative schema management:
+
+- `echonext db init` - Initialize Atlas migration setup
+- `echonext db migrate` - Apply pending migrations
+- `echonext db migrate:status` - Check migration status
+- `echonext db migrate:new` - Create empty migration file
+- `echonext db migrate:diff` - Generate migration from schema changes
+- `echonext db migrate:down` - Rollback migrations
+- `echonext db migrate:lint` - Lint migrations for issues
+- `echonext db schema:inspect` - Inspect current database schema
 - `echonext db seed` - Seed database with test data
 
 ## Quick Start
@@ -209,7 +217,7 @@ echonext generate otel
 
 ### echonext db init
 
-Initialize database migrations.
+Initialize Atlas migration setup in your project.
 
 ```bash
 echonext db init
@@ -217,16 +225,90 @@ echonext db init
 
 **Creates:**
 ```
-migrations/
-└── 000001_initial.sql
+project/
+├── atlas.hcl           # Atlas configuration file
+├── schema.hcl          # Database schema definition
+└── migrations/         # Migration files directory
+    └── atlas.sum       # Checksum file
 ```
 
 ### echonext db migrate
 
-Run database migrations.
+Apply pending migrations to the database.
 
 ```bash
+# Apply all pending migrations
 echonext db migrate
+
+# Preview changes without applying (dry-run)
+echonext db migrate --dry-run
+
+# Apply to specific environment
+echonext db migrate --env=production
+```
+
+### echonext db migrate:status
+
+Check the current migration status.
+
+```bash
+echonext db migrate:status
+```
+
+### echonext db migrate:new
+
+Create a new empty migration file.
+
+```bash
+echonext db migrate:new add_posts_table
+```
+
+### echonext db migrate:diff
+
+Generate a migration by comparing schema.hcl to the current database state.
+
+```bash
+# Generate migration from schema changes
+echonext db migrate:diff add_email_index
+```
+
+**Workflow:**
+1. Modify `schema.hcl` with your changes
+2. Run `echonext db migrate:diff describe_change`
+3. Review the generated SQL in `migrations/`
+4. Apply with `echonext db migrate`
+
+### echonext db migrate:down
+
+Rollback migrations.
+
+```bash
+# Rollback last migration
+echonext db migrate:down
+
+# Rollback N migrations
+echonext db migrate:down --count=3
+```
+
+### echonext db migrate:lint
+
+Check migrations for potential issues.
+
+```bash
+echonext db migrate:lint
+```
+
+Detects:
+- Destructive changes (DROP TABLE, DROP COLUMN)
+- Data-dependent operations
+- Missing indexes on foreign keys
+
+### echonext db schema:inspect
+
+Inspect the current database schema.
+
+```bash
+echonext db schema:inspect
 ```
 
 ### echonext db seed
