@@ -42,7 +42,7 @@ func (c *APIClient) WithAuth(token string) *APIClient {
 
 // WithBasicAuth sets the Authorization header with Basic auth
 func (c *APIClient) WithBasicAuth(username, password string) *APIClient {
-	req := &http.Request{}
+	req := &http.Request{Header: make(http.Header)}
 	req.SetBasicAuth(username, password)
 	c.headers["Authorization"] = req.Header.Get("Authorization")
 	return c

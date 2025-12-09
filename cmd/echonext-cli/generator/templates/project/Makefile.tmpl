@@ -1,16 +1,34 @@
 # Makefile for {{ .Name }}
 
 .PHONY: help run-api run-worker run-cli build test clean docker-build docker-up docker-down
+.PHONY: db-migrate db-migrate-status db-migrate-new db-migrate-diff db-migrate-down db-migrate-lint db-seed
 
 # Default target
 help:
 	@echo "Available commands:"
-	@echo "  run-api      - Start API server"
-	@echo "  run-worker   - Start background worker"
-	@echo "  run-cli      - Run CLI tool"
-	@echo "  build        - Build all executables"
-	@echo "  test         - Run tests"
-	@echo "  clean        - Clean build artifacts"
+	@echo ""
+	@echo "Development:"
+	@echo "  run-api       - Start API server"
+	@echo "  run-worker    - Start background worker"
+	@echo "  run-cli       - Run CLI tool"
+	@echo "  dev-db        - Start development database"
+	@echo ""
+	@echo "Build:"
+	@echo "  build         - Build all executables"
+	@echo "  test          - Run tests"
+	@echo "  test-coverage - Run tests with coverage report"
+	@echo "  clean         - Clean build artifacts"
+	@echo ""
+	@echo "Database (Atlas):"
+	@echo "  db-migrate        - Apply pending migrations"
+	@echo "  db-migrate-status - Show migration status"
+	@echo "  db-migrate-new    - Create new migration (NAME=migration_name)"
+	@echo "  db-migrate-diff   - Generate migration from schema (NAME=migration_name)"
+	@echo "  db-migrate-down   - Rollback last migration"
+	@echo "  db-migrate-lint   - Lint migrations for issues"
+	@echo "  db-seed           - Seed database with sample data"
+	@echo ""
+	@echo "Docker:"
 	@echo "  docker-build - Build Docker images"
 	@echo "  docker-up    - Start services with docker-compose"
 	@echo "  docker-down  - Stop services"
@@ -53,10 +71,43 @@ clean:
 	rm -rf bin/
 	rm -f coverage.out coverage.html
 
-# Database
+# Database migrations using Atlas
+# Requires: DATABASE_URL environment variable
+# Install Atlas: curl -sSf https://atlasgo.sh | sh
+
 db-migrate:
 	@echo "Running database migrations..."
-	go run ./cmd/migration up
+	atlas migrate apply --dir file://migrations --env local -c file://atlas.hcl
+
+db-migrate-status:
+	@echo "Migration status:"
+	atlas migrate status --dir file://migrations --env local -c file://atlas.hcl
+
+db-migrate-new:
+ifndef NAME
+	$(error NAME is required. Usage: make db-migrate-new NAME=create_users_table)
+endif
+	@echo "Creating new migration: $(NAME)"
+	atlas migrate new $(NAME) --dir file://migrations
+
+db-migrate-diff:
+ifndef NAME
+	$(error NAME is required. Usage: make db-migrate-diff NAME=add_email_index)
+endif
+	@echo "Generating migration from schema diff: $(NAME)"
+	atlas migrate diff $(NAME) --dir file://migrations --env local -c file://atlas.hcl
+
+db-migrate-down:
+	@echo "Rolling back last migration..."
+	atlas migrate down 1 --dir file://migrations --env local -c file://atlas.hcl
+
+db-migrate-lint:
+	@echo "Linting migrations..."
+	atlas migrate lint --dir file://migrations --latest 1 -c file://atlas.hcl
+
+db-migrate-hash:
+	@echo "Updating migration checksums..."
+	atlas migrate hash --dir file://migrations
 
 db-seed:
 	@echo "Seeding database..."

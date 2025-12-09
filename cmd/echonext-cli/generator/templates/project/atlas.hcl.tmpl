@@ -1,0 +1,73 @@
+// Atlas configuration for {{ .Name }}
+// Documentation: https://atlasgo.io/atlas-schema/hcl
+
+// Define development environment
+env "local" {
+  // Use PostgreSQL as the database driver
+  src = "file://schema.hcl"
+
+  // Development database URL - loaded from environment variable
+  url = getenv("DATABASE_URL")
+
+  // Dev database for schema diff calculations
+  dev = "docker://postgres/16/dev?search_path=public"
+
+  // Migration directory
+  migration {
+    dir = "file://migrations"
+  }
+
+  // Format migration files with timestamp prefix
+  format {
+    migrate {
+      diff = "{{ `{{ sql . \"  \" }}` }}"
+    }
+  }
+}
+
+// Define staging environment
+env "staging" {
+  src = "file://schema.hcl"
+  url = getenv("STAGING_DATABASE_URL")
+
+  migration {
+    dir = "file://migrations"
+  }
+}
+
+// Define production environment
+env "production" {
+  src = "file://schema.hcl"
+  url = getenv("PRODUCTION_DATABASE_URL")
+
+  migration {
+    dir = "file://migrations"
+  }
+
+  // Require approval for destructive changes in production
+  diff {
+    skip {
+      drop_column = true
+      drop_table  = true
+    }
+  }
+}
+
+// Lint configuration for migration validation
+lint {
+  // Detect destructive changes
+  destructive {
+    error = true
+  }
+
+  // Detect data-dependent changes
+  data_depend {
+    error = true
+  }
+
+  // Naming conventions
+  naming {
+    match   = "^[a-z]+(_[a-z]+)*$"
+    message = "must be lowercase with underscores"
+  }
+}

@@ -8,16 +8,41 @@ A type-safe API built with [EchoNext](https://github.com/abdussamadbello/echonex
 - 📝 Automatic OpenAPI generation
 - 🔧 Request/response validation
 - 🗄️ Database integration with GORM
+- 🔄 Schema migrations with [Atlas](https://atlasgo.io)
 - 🐳 Docker support
 - 🧪 Comprehensive testing
 
 ## Quick Start
+
+### Prerequisites
+
+- Go 1.21+
+- PostgreSQL
+- [Atlas CLI](https://atlasgo.io/getting-started/) (for migrations)
+
+Install Atlas:
+```bash
+# macOS
+brew install ariga/tap/atlas
+
+# Linux
+curl -sSf https://atlasgo.sh | sh
+```
 
 ### Development
 
 ```bash
 # Install dependencies
 go mod tidy
+
+# Set database URL
+export DATABASE_URL='postgres://postgres:password@localhost:5432/{{ .Name }}_dev?sslmode=disable'
+
+# Start development database
+make dev-db
+
+# Run migrations
+make db-migrate
 
 # Start API server
 make run-api
@@ -70,17 +95,106 @@ cd infrastructure && docker-compose up -d
 │   └── Dockerfile.worker  # Worker image
 ├── tests/                 # Test files
 ├── configs/               # Configuration files
-└── migrations/            # SQL migrations
+├── migrations/            # SQL migrations (Atlas versioned)
+├── atlas.hcl              # Atlas configuration
+└── schema.hcl             # Database schema definition
 ```
+
+## Database Migrations (Atlas)
+
+This project uses [Atlas](https://atlasgo.io) for database schema management. Atlas provides:
+- Declarative schema definition
+- Automatic migration generation
+- Migration linting and validation
+- Safe production deployments
+
+### Schema-as-Code
+
+The database schema is defined in `schema.hcl`. Edit this file to make schema changes:
+
+```hcl
+// schema.hcl
+table "users" {
+  schema = schema.public
+
+  column "id" {
+    null = false
+    type = bigserial
+  }
+  // ... more columns
+}
+```
+
+### Migration Commands
+
+```bash
+# Apply all pending migrations
+make db-migrate
+
+# Check migration status
+make db-migrate-status
+
+# Generate migration from schema changes
+make db-migrate-diff NAME=add_new_column
+
+# Create empty migration file
+make db-migrate-new NAME=custom_migration
+
+# Rollback last migration
+make db-migrate-down
+
+# Lint migrations for issues
+make db-migrate-lint
+
+# Update migration checksums after manual edit
+make db-migrate-hash
+```
+
+### Using echonext CLI
+
+You can also use the echonext CLI for migration management:
+
+```bash
+# Apply migrations
+echonext db migrate
+
+# Check status
+echonext db migrate:status
+
+# Generate migration from schema
+echonext db migrate:diff add_posts_table
+
+# Rollback
+echonext db migrate:down --count=1
+```
+
+### Migration Workflow
+
+1. **Edit `schema.hcl`** to define your desired schema state
+2. **Generate migration**: `make db-migrate-diff NAME=describe_change`
+3. **Review** the generated SQL in `migrations/`
+4. **Apply**: `make db-migrate`
+
+For manual SQL migrations:
+1. Create file: `make db-migrate-new NAME=custom_change`
+2. Edit the generated SQL file
+3. Update checksums: `make db-migrate-hash`
+4. Apply: `make db-migrate`
 
 ## Configuration
 
 Configuration is managed via YAML files in the `configs/` directory and can be overridden with environment variables.
 
-Example environment variables:
+### Environment Variables
+
 ```bash
-export MYAPP_APP_PORT=9090
-export MYAPP_DATABASE_DSN="postgres://user:pass@localhost/dbname?sslmode=disable"
+# Application
+export {{ .Name | upper | replace "-" "_" }}_APP_PORT=9090
+
+# Database
+export DATABASE_URL="postgres://user:pass@localhost/{{ .Name }}_dev?sslmode=disable"
+export STAGING_DATABASE_URL="postgres://user:pass@staging-host/{{ .Name }}_staging?sslmode=disable"
+export PRODUCTION_DATABASE_URL="postgres://user:pass@prod-host/{{ .Name }}?sslmode=disable"
 ```
 
 ## API Endpoints

@@ -48,17 +48,30 @@ func newDBCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "db",
 		Short: "Database operations",
-		Long: `Manage database operations like migrations and seeding.
+		Long: `Manage database operations using Atlas for migrations.
+
+Atlas is used for schema management and migrations.
+See https://atlasgo.io for more information.
 
 Examples:
-  echonext db init
-  echonext db migrate
-  echonext db seed`,
+  echonext db init              - Initialize Atlas migration setup
+  echonext db migrate           - Apply pending migrations
+  echonext db migrate:status    - Show migration status
+  echonext db migrate:new NAME  - Create a new migration
+  echonext db migrate:diff NAME - Generate migration from schema changes
+  echonext db migrate:down      - Rollback last migration
+  echonext db seed              - Seed database with sample data`,
 	}
 
 	cmd.AddCommand(
 		newDBInitCmd(),
 		newDBMigrateCmd(),
+		newDBMigrateStatusCmd(),
+		newDBMigrateNewCmd(),
+		newDBMigrateDiffCmd(),
+		newDBMigrateDownCmd(),
+		newDBMigrateLintCmd(),
+		newDBSchemaInspectCmd(),
 		newDBSeedCmd(),
 	)
 
@@ -273,17 +286,153 @@ Usage in your main.go:
 func newDBInitCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",
-		Short: "Initialize database configuration",
-		Run:   runDBInit,
+		Short: "Initialize Atlas migration setup",
+		Long: `Initialize Atlas migration configuration for your project.
+
+Creates:
+  - atlas.hcl     - Atlas configuration file
+  - schema.hcl    - Database schema definition
+  - migrations/   - Migration directory with initial migration
+
+Example:
+  echonext db init`,
+		Run: runDBInit,
 	}
 }
 
 func newDBMigrateCmd() *cobra.Command {
-	return &cobra.Command{
+	var dryRun bool
+	var env string
+
+	cmd := &cobra.Command{
 		Use:   "migrate",
-		Short: "Run database migrations",
-		Run:   runDBMigrate,
+		Short: "Apply pending migrations",
+		Long: `Apply all pending migrations using Atlas.
+
+Example:
+  echonext db migrate
+  echonext db migrate --dry-run
+  echonext db migrate --env=production`,
+		Run: func(cmd *cobra.Command, args []string) {
+			runDBMigrate(cmd, args, dryRun, env)
+		},
 	}
+
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview migrations without applying")
+	cmd.Flags().StringVar(&env, "env", "local", "Atlas environment (local, staging, production)")
+
+	return cmd
+}
+
+func newDBMigrateStatusCmd() *cobra.Command {
+	var env string
+
+	cmd := &cobra.Command{
+		Use:   "migrate:status",
+		Short: "Show migration status",
+		Long: `Display the current migration status.
+
+Example:
+  echonext db migrate:status`,
+		Run: func(cmd *cobra.Command, args []string) {
+			runDBMigrateStatus(cmd, args, env)
+		},
+	}
+
+	cmd.Flags().StringVar(&env, "env", "local", "Atlas environment")
+
+	return cmd
+}
+
+func newDBMigrateNewCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "migrate:new [name]",
+		Short: "Create a new empty migration file",
+		Long: `Create a new empty migration file.
+
+Example:
+  echonext db migrate:new add_users_table`,
+		Args: cobra.ExactArgs(1),
+		Run:  runDBMigrateNew,
+	}
+}
+
+func newDBMigrateDiffCmd() *cobra.Command {
+	var env string
+
+	cmd := &cobra.Command{
+		Use:   "migrate:diff [name]",
+		Short: "Generate migration from schema changes",
+		Long: `Generate a new migration by comparing schema.hcl to the current database.
+
+This is the recommended way to create migrations when using declarative schema.
+
+Example:
+  echonext db migrate:diff add_email_index`,
+		Args: cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			runDBMigrateDiff(cmd, args, env)
+		},
+	}
+
+	cmd.Flags().StringVar(&env, "env", "local", "Atlas environment")
+
+	return cmd
+}
+
+func newDBMigrateDownCmd() *cobra.Command {
+	var count int
+	var env string
+
+	cmd := &cobra.Command{
+		Use:   "migrate:down",
+		Short: "Rollback migrations",
+		Long: `Rollback the last N migrations (default: 1).
+
+Example:
+  echonext db migrate:down
+  echonext db migrate:down --count=2`,
+		Run: func(cmd *cobra.Command, args []string) {
+			runDBMigrateDown(cmd, args, count, env)
+		},
+	}
+
+	cmd.Flags().IntVar(&count, "count", 1, "Number of migrations to rollback")
+	cmd.Flags().StringVar(&env, "env", "local", "Atlas environment")
+
+	return cmd
+}
+
+func newDBMigrateLintCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "migrate:lint",
+		Short: "Lint migrations for issues",
+		Long: `Check migrations for common issues like destructive changes.
+
+Example:
+  echonext db migrate:lint`,
+		Run: runDBMigrateLint,
+	}
+}
+
+func newDBSchemaInspectCmd() *cobra.Command {
+	var env string
+
+	cmd := &cobra.Command{
+		Use:   "schema:inspect",
+		Short: "Inspect current database schema",
+		Long: `Inspect and display the current database schema.
+
+Example:
+  echonext db schema:inspect`,
+		Run: func(cmd *cobra.Command, args []string) {
+			runDBSchemaInspect(cmd, args, env)
+		},
+	}
+
+	cmd.Flags().StringVar(&env, "env", "local", "Atlas environment")
+
+	return cmd
 }
 
 func newDBSeedCmd() *cobra.Command {

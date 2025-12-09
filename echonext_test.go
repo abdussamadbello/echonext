@@ -316,11 +316,11 @@ func TestAdvancedOpenAPIFeatures(t *testing.T) {
 	})
 
 	// Add security schemes
-	app.AddSecurityScheme("bearerAuth", echonext.Security{
+	_ = app.AddSecurityScheme("bearerAuth", echonext.Security{
 		Type:   "bearer",
 		Scheme: "JWT",
 	})
-	app.AddSecurityScheme("apiKey", echonext.Security{
+	_ = app.AddSecurityScheme("apiKey", echonext.Security{
 		Type: "apiKey",
 		Name: "X-API-Key",
 		In:   "header",
@@ -347,9 +347,9 @@ func TestAdvancedOpenAPIFeatures(t *testing.T) {
 		Description:   "Demonstrates advanced OpenAPI features",
 		Tags:          []string{"Advanced"},
 		SuccessStatus: 201,
-		Security: []echonext.Security{
-			{Type: "bearer"},
-			{Type: "apiKey", Name: "X-API-Key"},
+		Security: []echonext.SecurityRequirement{
+			{SchemeName: "bearerAuth"},
+			{SchemeName: "apiKey"},
 		},
 		RequestHeaders: map[string]echonext.HeaderInfo{
 			"X-Request-ID": {
@@ -433,4 +433,365 @@ func TestCustomStatusCodes(t *testing.T) {
 
 	// Should return 201 Created instead of 200 OK
 	assert.Equal(t, 201, rec.Code)
+}
+
+// =============================================================================
+// Security Scheme Tests
+// =============================================================================
+
+func TestOAuth2AuthorizationCodeFlow(t *testing.T) {
+	app := echonext.New()
+
+	err := app.AddSecurityScheme("oauth2", echonext.Security{
+		Type:        "oauth2",
+		Description: "OAuth2 with authorization code",
+		OAuth2Flows: &echonext.OAuth2Flows{
+			AuthorizationCode: &echonext.OAuth2Flow{
+				AuthorizationURL: "https://auth.example.com/authorize",
+				TokenURL:         "https://auth.example.com/token",
+				RefreshURL:       "https://auth.example.com/refresh",
+				Scopes: map[string]string{
+					"read":  "Read access",
+					"write": "Write access",
+				},
+			},
+		},
+	})
+	assert.NoError(t, err)
+
+	spec := app.GenerateOpenAPISpec()
+	scheme := spec.Components.SecuritySchemes["oauth2"].Value
+
+	assert.Equal(t, "oauth2", scheme.Type)
+	assert.NotNil(t, scheme.Flows)
+	assert.NotNil(t, scheme.Flows.AuthorizationCode)
+	assert.Equal(t, "https://auth.example.com/authorize", scheme.Flows.AuthorizationCode.AuthorizationURL)
+	assert.Equal(t, "https://auth.example.com/token", scheme.Flows.AuthorizationCode.TokenURL)
+	assert.Equal(t, "https://auth.example.com/refresh", scheme.Flows.AuthorizationCode.RefreshURL)
+	assert.Contains(t, scheme.Flows.AuthorizationCode.Scopes, "read")
+	assert.Contains(t, scheme.Flows.AuthorizationCode.Scopes, "write")
+}
+
+func TestOAuth2ClientCredentialsFlow(t *testing.T) {
+	app := echonext.New()
+
+	err := app.AddSecurityScheme("oauth2-cc", echonext.Security{
+		Type: "oauth2",
+		OAuth2Flows: &echonext.OAuth2Flows{
+			ClientCredentials: &echonext.OAuth2Flow{
+				TokenURL: "https://auth.example.com/token",
+				Scopes: map[string]string{
+					"api": "API access",
+				},
+			},
+		},
+	})
+	assert.NoError(t, err)
+
+	spec := app.GenerateOpenAPISpec()
+	scheme := spec.Components.SecuritySchemes["oauth2-cc"].Value
+
+	assert.NotNil(t, scheme.Flows.ClientCredentials)
+	assert.Equal(t, "https://auth.example.com/token", scheme.Flows.ClientCredentials.TokenURL)
+}
+
+func TestOAuth2ImplicitFlow(t *testing.T) {
+	app := echonext.New()
+
+	err := app.AddSecurityScheme("oauth2-implicit", echonext.Security{
+		Type: "oauth2",
+		OAuth2Flows: &echonext.OAuth2Flows{
+			Implicit: &echonext.OAuth2Flow{
+				AuthorizationURL: "https://auth.example.com/authorize",
+				Scopes: map[string]string{
+					"read": "Read access",
+				},
+			},
+		},
+	})
+	assert.NoError(t, err)
+
+	spec := app.GenerateOpenAPISpec()
+	scheme := spec.Components.SecuritySchemes["oauth2-implicit"].Value
+
+	assert.NotNil(t, scheme.Flows.Implicit)
+	assert.Equal(t, "https://auth.example.com/authorize", scheme.Flows.Implicit.AuthorizationURL)
+}
+
+func TestOAuth2PasswordFlow(t *testing.T) {
+	app := echonext.New()
+
+	err := app.AddSecurityScheme("oauth2-password", echonext.Security{
+		Type: "oauth2",
+		OAuth2Flows: &echonext.OAuth2Flows{
+			Password: &echonext.OAuth2Flow{
+				TokenURL: "https://auth.example.com/token",
+				Scopes: map[string]string{
+					"user": "User access",
+				},
+			},
+		},
+	})
+	assert.NoError(t, err)
+
+	spec := app.GenerateOpenAPISpec()
+	scheme := spec.Components.SecuritySchemes["oauth2-password"].Value
+
+	assert.NotNil(t, scheme.Flows.Password)
+}
+
+func TestOAuth2WithoutFlowsReturnsError(t *testing.T) {
+	app := echonext.New()
+
+	err := app.AddSecurityScheme("oauth2-invalid", echonext.Security{
+		Type: "oauth2",
+		// Missing OAuth2Flows
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "OAuth2Flows")
+}
+
+func TestOpenIDConnectScheme(t *testing.T) {
+	app := echonext.New()
+
+	err := app.AddSecurityScheme("oidc", echonext.Security{
+		Type:             "openIdConnect",
+		Description:      "OpenID Connect authentication",
+		OpenIDConnectURL: "https://auth.example.com/.well-known/openid-configuration",
+	})
+	assert.NoError(t, err)
+
+	spec := app.GenerateOpenAPISpec()
+	scheme := spec.Components.SecuritySchemes["oidc"].Value
+
+	assert.Equal(t, "openIdConnect", scheme.Type)
+	assert.Equal(t, "https://auth.example.com/.well-known/openid-configuration", scheme.OpenIdConnectUrl)
+	assert.Equal(t, "OpenID Connect authentication", scheme.Description)
+}
+
+func TestOpenIDConnectWithoutURLReturnsError(t *testing.T) {
+	app := echonext.New()
+
+	err := app.AddSecurityScheme("oidc-invalid", echonext.Security{
+		Type: "openIdConnect",
+		// Missing OpenIDConnectURL
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "OpenIDConnectURL")
+}
+
+func TestGlobalSecurityAppliedToRoutes(t *testing.T) {
+	app := echonext.New()
+
+	_ = app.AddSecurityScheme("bearerAuth", echonext.Security{
+		Type:   "bearer",
+		Scheme: "JWT",
+	})
+
+	err := app.SetGlobalSecurity(echonext.SecurityRequirement{
+		SchemeName: "bearerAuth",
+	})
+	assert.NoError(t, err)
+
+	app.GET("/users", func(c echo.Context) ([]TestUser, error) {
+		return nil, nil
+	}, echonext.Route{
+		Summary: "List users",
+	})
+
+	spec := app.GenerateOpenAPISpec()
+
+	// Check global security in spec
+	assert.NotNil(t, spec.Security)
+	assert.Len(t, spec.Security, 1)
+
+	// Route should inherit global security
+	secReqs := *spec.Paths["/users"].Get.Security
+	assert.Len(t, secReqs, 1)
+	assert.Contains(t, secReqs[0], "bearerAuth")
+}
+
+func TestGlobalSecurityOverriddenByRoute(t *testing.T) {
+	app := echonext.New()
+
+	_ = app.AddSecurityScheme("bearerAuth", echonext.Security{Type: "bearer", Scheme: "JWT"})
+	_ = app.AddSecurityScheme("apiKey", echonext.Security{Type: "apiKey", Name: "X-API-Key", In: "header"})
+
+	_ = app.SetGlobalSecurity(echonext.SecurityRequirement{SchemeName: "bearerAuth"})
+
+	app.POST("/admin", func(c echo.Context, req CreateUserRequest) (TestUser, error) {
+		return TestUser{}, nil
+	}, echonext.Route{
+		Summary: "Admin action",
+		Security: []echonext.SecurityRequirement{
+			{SchemeName: "apiKey"},
+		},
+	})
+
+	spec := app.GenerateOpenAPISpec()
+	secReqs := *spec.Paths["/admin"].Post.Security
+
+	// Should have route-specific security, not global
+	assert.Len(t, secReqs, 1)
+	assert.Contains(t, secReqs[0], "apiKey")
+}
+
+func TestGlobalSecurityDisabledForRoute(t *testing.T) {
+	app := echonext.New()
+
+	_ = app.AddSecurityScheme("bearerAuth", echonext.Security{Type: "bearer", Scheme: "JWT"})
+	_ = app.SetGlobalSecurity(echonext.SecurityRequirement{SchemeName: "bearerAuth"})
+
+	app.GET("/health", func(c echo.Context) (map[string]string, error) {
+		return map[string]string{"status": "ok"}, nil
+	}, echonext.Route{
+		Summary:               "Health check",
+		DisableGlobalSecurity: true,
+	})
+
+	spec := app.GenerateOpenAPISpec()
+	secReqs := spec.Paths["/health"].Get.Security
+
+	// Should have empty security (public endpoint)
+	assert.NotNil(t, secReqs)
+	assert.Len(t, *secReqs, 0)
+}
+
+func TestSetGlobalSecurityWithInvalidSchemeReturnsError(t *testing.T) {
+	app := echonext.New()
+
+	err := app.SetGlobalSecurity(echonext.SecurityRequirement{
+		SchemeName: "nonexistent",
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestClearGlobalSecurity(t *testing.T) {
+	app := echonext.New()
+
+	_ = app.AddSecurityScheme("bearerAuth", echonext.Security{Type: "bearer", Scheme: "JWT"})
+	_ = app.SetGlobalSecurity(echonext.SecurityRequirement{SchemeName: "bearerAuth"})
+	app.ClearGlobalSecurity()
+
+	app.GET("/users", func(c echo.Context) ([]TestUser, error) {
+		return nil, nil
+	})
+
+	spec := app.GenerateOpenAPISpec()
+
+	assert.Nil(t, spec.Security)
+}
+
+func TestRouteReferencesSchemeByName(t *testing.T) {
+	app := echonext.New()
+
+	_ = app.AddSecurityScheme("custom-jwt", echonext.Security{
+		Type:   "bearer",
+		Scheme: "JWT",
+	})
+
+	app.GET("/protected", func(c echo.Context) (map[string]string, error) {
+		return nil, nil
+	}, echonext.Route{
+		Security: []echonext.SecurityRequirement{
+			{SchemeName: "custom-jwt"},
+		},
+	})
+
+	spec := app.GenerateOpenAPISpec()
+	secReqs := *spec.Paths["/protected"].Get.Security
+
+	assert.Len(t, secReqs, 1)
+	assert.Contains(t, secReqs[0], "custom-jwt")
+}
+
+func TestSecuritySchemeDescription(t *testing.T) {
+	app := echonext.New()
+
+	_ = app.AddSecurityScheme("bearerAuth", echonext.Security{
+		Type:        "bearer",
+		Scheme:      "JWT",
+		Description: "JWT token for authentication",
+	})
+
+	spec := app.GenerateOpenAPISpec()
+	scheme := spec.Components.SecuritySchemes["bearerAuth"].Value
+
+	assert.Equal(t, "JWT token for authentication", scheme.Description)
+}
+
+func TestMultipleSecurityRequirementsWithScopes(t *testing.T) {
+	app := echonext.New()
+
+	_ = app.AddSecurityScheme("oauth2", echonext.Security{
+		Type: "oauth2",
+		OAuth2Flows: &echonext.OAuth2Flows{
+			AuthorizationCode: &echonext.OAuth2Flow{
+				AuthorizationURL: "https://example.com/auth",
+				TokenURL:         "https://example.com/token",
+				Scopes: map[string]string{
+					"read":  "Read access",
+					"write": "Write access",
+				},
+			},
+		},
+	})
+
+	_ = app.AddSecurityScheme("apiKey", echonext.Security{
+		Type: "apiKey",
+		Name: "X-API-Key",
+		In:   "header",
+	})
+
+	app.POST("/data", func(c echo.Context, req TestUser) (TestUser, error) {
+		return req, nil
+	}, echonext.Route{
+		Security: []echonext.SecurityRequirement{
+			{SchemeName: "oauth2", Scopes: []string{"write"}},
+			{SchemeName: "apiKey"},
+		},
+	})
+
+	spec := app.GenerateOpenAPISpec()
+	secReqs := *spec.Paths["/data"].Post.Security
+
+	assert.Len(t, secReqs, 2)
+	assert.Equal(t, []string{"write"}, secReqs[0]["oauth2"])
+	assert.Equal(t, []string{}, secReqs[1]["apiKey"])
+}
+
+func TestUnsupportedSecurityTypeReturnsError(t *testing.T) {
+	app := echonext.New()
+
+	err := app.AddSecurityScheme("invalid", echonext.Security{
+		Type: "unsupported",
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported security type")
+}
+
+func TestOpenIDConnectRouteWithScopes(t *testing.T) {
+	app := echonext.New()
+
+	_ = app.AddSecurityScheme("oidc", echonext.Security{
+		Type:             "openIdConnect",
+		OpenIDConnectURL: "https://auth.example.com/.well-known/openid-configuration",
+	})
+
+	app.GET("/profile", func(c echo.Context) (map[string]string, error) {
+		return map[string]string{"name": "John"}, nil
+	}, echonext.Route{
+		Summary: "Get profile",
+		Security: []echonext.SecurityRequirement{
+			{SchemeName: "oidc", Scopes: []string{"openid", "profile"}},
+		},
+	})
+
+	spec := app.GenerateOpenAPISpec()
+	secReqs := *spec.Paths["/profile"].Get.Security
+
+	assert.Len(t, secReqs, 1)
+	assert.Contains(t, secReqs[0], "oidc")
+	assert.ElementsMatch(t, []string{"openid", "profile"}, secReqs[0]["oidc"])
 }

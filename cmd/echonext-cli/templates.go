@@ -75,3 +75,39 @@ func (g *ProjectGenerator) generateOTEL() string {
 	}
 	return content
 }
+
+// generateAtlasConfig creates the atlas.hcl configuration file
+func (g *ProjectGenerator) generateAtlasConfig() string {
+	content, err := g.templateGenerator.GenerateAtlasConfig()
+	if err != nil {
+		log.Fatalf("Failed to generate atlas.hcl: %v", err)
+	}
+	return content
+}
+
+// generateSchemaHCL creates the schema.hcl file for Atlas declarative schema
+func (g *ProjectGenerator) generateSchemaHCL() string {
+	content, err := g.templateGenerator.GenerateSchemaHCL()
+	if err != nil {
+		log.Fatalf("Failed to generate schema.hcl: %v", err)
+	}
+	return content
+}
+
+// generateInitialMigration creates the initial SQL migration file
+func (g *ProjectGenerator) generateInitialMigration() string {
+	content, err := g.templateGenerator.GenerateInitialMigration()
+	if err != nil {
+		log.Fatalf("Failed to generate initial migration: %v", err)
+	}
+	return content
+}
+
+// generateAtlasSum creates the atlas.sum file for migration checksums
+func (g *ProjectGenerator) generateAtlasSum() string {
+	content, err := g.templateGenerator.GenerateAtlasSum()
+	if err != nil {
+		log.Fatalf("Failed to generate atlas.sum: %v", err)
+	}
+	return content
+}

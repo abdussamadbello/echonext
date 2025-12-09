@@ -1,0 +1,61 @@
+// Database schema for {{ .Name }}
+// This file is the source of truth for your database schema.
+// Atlas will use this file to generate migrations.
+//
+// Documentation: https://atlasgo.io/atlas-schema/hcl
+
+// Users table
+table "users" {
+  schema = schema.public
+
+  column "id" {
+    null    = false
+    type    = bigserial
+  }
+
+  column "name" {
+    null = false
+    type = varchar(255)
+  }
+
+  column "email" {
+    null = false
+    type = varchar(255)
+  }
+
+  column "created_at" {
+    null    = false
+    type    = timestamptz
+    default = sql("CURRENT_TIMESTAMP")
+  }
+
+  column "updated_at" {
+    null    = false
+    type    = timestamptz
+    default = sql("CURRENT_TIMESTAMP")
+  }
+
+  column "deleted_at" {
+    null = true
+    type = timestamptz
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "idx_users_email" {
+    unique  = true
+    columns = [column.email]
+    where   = "deleted_at IS NULL"
+  }
+
+  index "idx_users_deleted_at" {
+    columns = [column.deleted_at]
+  }
+}
+
+// Schema definition
+schema "public" {
+  comment = "{{ .Name }} database schema"
+}
