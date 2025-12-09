@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -780,4 +781,232 @@ func getModuleName() (string, error) {
 	}
 
 	return "", fmt.Errorf("module name not found in go.mod")
+}
+
+// Dev, Test, and Build command implementations
+
+// runDev starts the development server with hot reload
+func runDev(port int, watch bool, target string) error {
+	fmt.Printf("Starting development server for %s on port %d...\n", target, port)
+	if watch {
+		fmt.Println("File watching enabled")
+	}
+
+	server := NewDevServer(port, target, watch)
+	return server.Run()
+}
+
+// runTest runs the test suite with enhanced features
+func runTest(coverage bool, verbose bool, args []string) error {
+	if !isEchoNextProject() {
+		return fmt.Errorf("not in an EchoNext project. Run from project root")
+	}
+
+	fmt.Println("Running tests...")
+
+	// Build the go test command arguments
+	testArgs := []string{"test"}
+
+	if verbose {
+		testArgs = append(testArgs, "-v")
+	}
+
+	if coverage {
+		coverFile := "coverage.out"
+		testArgs = append(testArgs, "-coverprofile="+coverFile)
+	}
+
+	// Add default package pattern
+	testArgs = append(testArgs, "./...")
+
+	// Add any extra args passed by user
+	testArgs = append(testArgs, args...)
+
+	// Run go test
+	cmd := exec.Command("go", testArgs...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	err := cmd.Run()
+
+	// Show coverage summary if enabled
+	if coverage {
+		showCoverageSummary("coverage.out")
+	}
+
+	// Print result indicator
+	if err != nil {
+		fmt.Println("\nTests FAILED")
+		return err
+	}
+
+	fmt.Println("\nTests PASSED")
+	return nil
+}
+
+// showCoverageSummary displays a summary of test coverage
+func showCoverageSummary(coverFile string) {
+	if _, err := os.Stat(coverFile); os.IsNotExist(err) {
+		return
+	}
+
+	fmt.Println("\nCoverage report generated: coverage.out")
+
+	cmd := exec.Command("go", "tool", "cover", "-func="+coverFile)
+
+	// Capture output to show only the total line
+	output, err := cmd.Output()
+	if err != nil {
+		return
+	}
+
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "total:") {
+			fmt.Println(line)
+			break
+		}
+	}
+}
+
+// BuildTarget represents a build target
+type BuildTarget struct {
+	Name   string
+	Path   string
+	Output string
+}
+
+// runBuild builds the project for production
+func runBuild(target string, output string) error {
+	if !isEchoNextProject() {
+		return fmt.Errorf("not in an EchoNext project. Run from project root")
+	}
+
+	// Define available targets
+	allTargets := []BuildTarget{
+		{Name: "api", Path: "./cmd/api", Output: "api"},
+		{Name: "worker", Path: "./cmd/worker", Output: "worker"},
+		{Name: "cli", Path: "./cmd/cli", Output: "cli"},
+		{Name: "migration", Path: "./cmd/migration", Output: "migration"},
+	}
+
+	// Filter targets based on selection
+	var targets []BuildTarget
+	if target == "all" {
+		targets = allTargets
+	} else {
+		for _, t := range allTargets {
+			if t.Name == target {
+				targets = append(targets, t)
+				break
+			}
+		}
+		if len(targets) == 0 {
+			return fmt.Errorf("unknown target: %s. Available: all, api, worker, cli, migration", target)
+		}
+	}
+
+	// Create output directory
+	if err := os.MkdirAll(output, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Get version info for ldflags
+	version := getVersionFromGit()
+	buildTime := fmt.Sprintf("%d", getCurrentTimestamp())
+
+	// Build ldflags for production
+	ldflags := fmt.Sprintf("-s -w -X main.Version=%s -X main.BuildTime=%s", version, buildTime)
+
+	fmt.Printf("Building %d target(s) to %s/\n", len(targets), output)
+	fmt.Printf("Version: %s\n", version)
+	fmt.Println()
+
+	// Build each target
+	successCount := 0
+	for _, t := range targets {
+		// Check if target path exists
+		if _, err := os.Stat(t.Path); os.IsNotExist(err) {
+			fmt.Printf("  Skipping %s (not found at %s)\n", t.Name, t.Path)
+			continue
+		}
+
+		outputPath := filepath.Join(output, t.Output)
+		fmt.Printf("  Building %s...", t.Name)
+
+		startTime := getCurrentTimestamp()
+
+		// Build command
+		cmd := exec.Command("go", "build",
+			"-ldflags", ldflags,
+			"-trimpath",
+			"-o", outputPath,
+			t.Path,
+		)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		if err := cmd.Run(); err != nil {
+			fmt.Printf(" FAILED\n")
+			fmt.Printf("    Error: %v\n", err)
+			continue
+		}
+
+		// Get binary size
+		info, _ := os.Stat(outputPath)
+		duration := getCurrentTimestamp() - startTime
+
+		fmt.Printf(" OK (%s, %dms)\n", formatSize(info.Size()), duration)
+		successCount++
+	}
+
+	fmt.Println()
+	if successCount == len(targets) {
+		fmt.Printf("Build complete: %d/%d targets built successfully\n", successCount, len(targets))
+	} else if successCount > 0 {
+		fmt.Printf("Build partial: %d/%d targets built\n", successCount, len(targets))
+	} else {
+		return fmt.Errorf("build failed: no targets built successfully")
+	}
+
+	return nil
+}
+
+// getVersionFromGit gets version information from git
+func getVersionFromGit() string {
+	// Try git describe first
+	cmd := exec.Command("git", "describe", "--tags", "--always", "--dirty")
+	output, err := cmd.Output()
+	if err == nil {
+		return strings.TrimSpace(string(output))
+	}
+
+	// Fall back to short commit hash
+	cmd = exec.Command("git", "rev-parse", "--short", "HEAD")
+	output, err = cmd.Output()
+	if err == nil {
+		return strings.TrimSpace(string(output))
+	}
+
+	return "dev"
+}
+
+// getCurrentTimestamp returns current unix timestamp in milliseconds
+func getCurrentTimestamp() int64 {
+	return time.Now().UnixMilli()
+}
+
+// formatSize formats a file size in human-readable form
+func formatSize(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
