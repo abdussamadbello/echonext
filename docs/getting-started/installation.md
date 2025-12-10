@@ -10,6 +10,24 @@ Before installing EchoNext, ensure you have:
 - **Git** - For version control
 - A text editor or IDE (VS Code, GoLand, etc.)
 
+## Quick Install
+
+The fastest way to install the EchoNext CLI:
+
+### Linux / macOS
+
+```bash
+curl -sSL https://raw.githubusercontent.com/abdussamadbello/echonext/master/install.sh | bash
+```
+
+### Windows (PowerShell)
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/abdussamadbello/echonext/master/install.ps1 | iex
+```
+
+This installs `echonext` to `~/.local/bin` (Unix) or `%LOCALAPPDATA%\bin` (Windows) and automatically configures your PATH.
+
 ## Installing EchoNext
 
 ### Install the Library
@@ -199,13 +217,22 @@ Now that EchoNext is installed:
 
 ### "command not found: echonext"
 
-Make sure `$GOPATH/bin` is in your PATH:
+If you used the install script, ensure `~/.local/bin` is in your PATH:
+
+```bash
+# Linux/macOS
+export PATH="$PATH:$HOME/.local/bin"
+```
+
+If you used `go install` directly, ensure `$GOPATH/bin` is in your PATH:
 
 ```bash
 export PATH=$PATH:$(go env GOPATH)/bin
 ```
 
-Add this to your `~/.bashrc` or `~/.zshrc` to make it permanent.
+Add the appropriate line to your `~/.bashrc` or `~/.zshrc` to make it permanent.
+
+**Windows:** The install script automatically adds `%LOCALAPPDATA%\bin` to your PATH. Restart your terminal after installation.
 
 ### "package github.com/abdussamadbello/echonext: cannot find package"
 
