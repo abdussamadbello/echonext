@@ -26,9 +26,20 @@ if (-not (Test-Path $InstallDir)) {
     Write-Host "Created directory: $InstallDir"
 }
 
+# Get latest version from GitHub tags
+Write-Host "Fetching latest version..."
+try {
+    $tags = Invoke-RestMethod -Uri "https://api.github.com/repos/abdussamadbello/echonext/tags" -ErrorAction Stop
+    $LatestVersion = $tags[0].name
+    Write-Host "Latest version: $LatestVersion"
+} catch {
+    Write-Host "Could not fetch version, using @latest" -ForegroundColor Yellow
+    $LatestVersion = "latest"
+}
+
 # Install using go install
 Write-Host "Installing EchoNext CLI..."
-go install github.com/abdussamadbello/echonext/cmd/echonext-cli@latest
+go install "github.com/abdussamadbello/echonext/cmd/echonext-cli@$LatestVersion"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: go install failed" -ForegroundColor Red

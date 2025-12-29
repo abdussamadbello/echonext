@@ -23,9 +23,20 @@ echo "Found $GO_VERSION"
 # Create install directory
 mkdir -p "$INSTALL_DIR"
 
-# Install using go install
+# Get latest version from GitHub tags
+echo "Fetching latest version..."
+LATEST_VERSION=$(curl -sL https://api.github.com/repos/abdussamadbello/echonext/tags | grep -m1 '"name"' | sed -E 's/.*"name": *"([^"]+)".*/\1/')
+
+# Fallback to latest if API fails
+if [ -z "$LATEST_VERSION" ]; then
+    echo "Could not fetch version, using @latest"
+    LATEST_VERSION="latest"
+else
+    echo "Latest version: $LATEST_VERSION"
+fi
+
 echo "Installing EchoNext CLI..."
-go install github.com/abdussamadbello/echonext/cmd/echonext-cli@latest
+go install github.com/abdussamadbello/echonext/cmd/echonext-cli@$LATEST_VERSION
 
 # Get GOBIN path (respects GOBIN env var, falls back to GOPATH/bin)
 GOBIN=$(go env GOBIN)
