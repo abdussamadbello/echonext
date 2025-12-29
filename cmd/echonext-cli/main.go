@@ -81,21 +81,19 @@ func newUpgradeCmd() *cobra.Command {
 			fmt.Println("Upgrading EchoNext CLI...")
 			fmt.Printf("Current version: %s\n\n", getVersion())
 
-			// Get current executable path
+			// Get current executable path (resolve symlinks)
 			currentExe, err := os.Executable()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: Could not determine current executable path: %v\n", err)
-			}
-
-			// Run go install to get latest version
-			installCmd := exec.Command("go", "install", "github.com/abdussamadbello/echonext/cmd/echonext-cli@latest")
-			installCmd.Stdout = os.Stdout
-			installCmd.Stderr = os.Stderr
-
-			if err := installCmd.Run(); err != nil {
-				fmt.Fprintf(os.Stderr, "Upgrade failed: %v\n", err)
+				fmt.Fprintf(os.Stderr, "Error: Could not determine current executable path: %v\n", err)
 				os.Exit(1)
 			}
+			// Resolve any symlinks to get the real path
+			currentExe, err = filepath.EvalSymlinks(currentExe)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: Could not resolve executable path: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Current binary: %s\n", currentExe)
 
 			// Get GOBIN path
 			goBinCmd := exec.Command("go", "env", "GOBIN")
@@ -113,24 +111,44 @@ func newUpgradeCmd() *cobra.Command {
 				sourceBinary += ".exe"
 			}
 
+			fmt.Printf("Installing to: %s\n\n", sourceBinary)
+
+			// Run go install to get latest version
+			installCmd := exec.Command("go", "install", "github.com/abdussamadbello/echonext/cmd/echonext-cli@latest")
+			installCmd.Stdout = os.Stdout
+			installCmd.Stderr = os.Stderr
+
+			if err := installCmd.Run(); err != nil {
+				fmt.Fprintf(os.Stderr, "Upgrade failed: %v\n", err)
+				os.Exit(1)
+			}
+
+			// Check if source binary was created
+			if _, err := os.Stat(sourceBinary); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: New binary not found at %s: %v\n", sourceBinary, err)
+				os.Exit(1)
+			}
+
 			// If current exe is different from GOBIN location, copy the new binary
-			if currentExe != "" && currentExe != sourceBinary {
-				// Check if source exists
-				if _, err := os.Stat(sourceBinary); err == nil {
-					// Read the new binary
-					newBinary, err := os.ReadFile(sourceBinary)
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "Warning: Could not read new binary: %v\n", err)
-					} else {
-						// Write to current location
-						if err := os.WriteFile(currentExe, newBinary, 0755); err != nil {
-							fmt.Fprintf(os.Stderr, "Warning: Could not update %s: %v\n", currentExe, err)
-							fmt.Fprintf(os.Stderr, "You may need to run the install script again or copy manually.\n")
-						} else {
-							fmt.Printf("Updated binary at %s\n", currentExe)
-						}
-					}
+			if currentExe != sourceBinary {
+				fmt.Printf("\nCopying new binary to %s...\n", currentExe)
+
+				// Read the new binary
+				newBinary, err := os.ReadFile(sourceBinary)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: Could not read new binary: %v\n", err)
+					fmt.Fprintf(os.Stderr, "You can manually copy: cp %s %s\n", sourceBinary, currentExe)
+					os.Exit(1)
 				}
+
+				// Write to current location
+				if err := os.WriteFile(currentExe, newBinary, 0755); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: Could not update %s: %v\n", currentExe, err)
+					fmt.Fprintf(os.Stderr, "Try with sudo: sudo cp %s %s\n", sourceBinary, currentExe)
+					os.Exit(1)
+				}
+
+				fmt.Printf("Updated: %s\n", currentExe)
 			}
 
 			fmt.Println("\nUpgrade complete!")
