@@ -748,8 +748,11 @@ MIT License - see the [LICENSE](LICENSE) file for details.
 - [x] ✅ GraphQL integration
 - [x] ✅ Code generation from OpenAPI spec
 
+**Completed:**
+- [x] ✅ OpenTelemetry integration (see `pkg/contrib/middleware`)
+
 **Planned:**
 - [ ] Plugin system for custom generators
-- [ ] OpenTelemetry integration
 - [ ] gRPC support
 - [ ] API versioning helpers
+- [ ] Server-Sent Events (SSE)
