@@ -2,7 +2,7 @@
 
 This document outlines the future development plans for EchoNext.
 
-## Current Status (v1.0.0)
+## Current Status (v1.4.0)
 
 EchoNext is production-ready with comprehensive features:
 
@@ -11,11 +11,18 @@ EchoNext is production-ready with comprehensive features:
 - Built-in validation and error handling
 - Full Echo compatibility
 - Comprehensive middleware support
+- File upload support with OpenAPI documentation
+- WebSocket support with Hub pattern
+- GraphQL integration with gqlgen
 
 ✅ **CLI Tool**
 - Project initialization
 - Code generation (domains, handlers, services, etc.)
 - Database management commands
+- Hot reload development server (`echonext dev`)
+- Enhanced test runner (`echonext test`)
+- Build automation (`echonext build`)
+- WebSocket and Upload generators
 
 ✅ **Contrib Packages**
 - Database helpers (GORM integration)
@@ -25,14 +32,14 @@ EchoNext is production-ready with comprehensive features:
 
 ✅ **Documentation & Examples**
 - Comprehensive guides
-- Multiple example projects
+- Multiple example projects (GraphQL, WebSocket, Upload)
 - Full API reference
 
-## Short Term (Next 3-6 months)
+## Completed in v1.4.0
 
 ### Developer Experience
 
-- [ ] **Hot Reload Development Server**
+- [x] **Hot Reload Development Server**
   ```bash
   echonext dev --watch
   ```
@@ -40,7 +47,7 @@ EchoNext is production-ready with comprehensive features:
   - Auto-rebuild and restart
   - LiveReload integration for frontend
 
-- [ ] **Enhanced Test Runner**
+- [x] **Enhanced Test Runner**
   ```bash
   echonext test --coverage --verbose
   ```
@@ -48,13 +55,64 @@ EchoNext is production-ready with comprehensive features:
   - Code coverage analysis
   - Test result formatting
 
-- [ ] **Build Automation**
+- [x] **Build Automation**
   ```bash
   echonext build --optimize --platform linux/amd64
   ```
   - Optimized production builds
   - Cross-platform compilation
   - Binary size optimization
+
+### File Handling
+
+- [x] **File Upload Support in OpenAPI**
+  ```go
+  app.Upload("/avatar", uploadHandler, echonext.Route{
+      Summary: "Upload avatar",
+  })
+  ```
+  - Automatic multipart/form-data handling
+  - File validation (size, type)
+  - `file.SaveTo()` for easy persistence
+  - OpenAPI documentation for file endpoints
+
+### Real-time Features
+
+- [x] **WebSocket Support**
+  ```go
+  app.WS("/chat", chatHandler)
+  ```
+  - Type-safe WebSocket handlers
+  - Hub pattern for broadcasting
+  - Connection management
+  - CLI generator: `echonext generate websocket`
+
+### GraphQL Integration
+
+- [x] **GraphQL Support**
+  ```go
+  app.GraphQL(graphql.Config{
+      Path: "/graphql",
+      PlaygroundPath: "/playground",
+  })
+  ```
+  - Seamless gqlgen integration
+  - Echo context access in resolvers
+  - GraphQL playground
+  - Subscriptions support
+  - CLI generator: `echonext generate graphql`
+
+### Code Generation
+
+- [x] **Generate from OpenAPI**
+  ```bash
+  echonext generate openapi api.yaml
+  ```
+  - Generate handlers from OpenAPI spec
+  - Generate models and DTOs
+  - Route registration code
+
+## Short Term (Next 3-6 months)
 
 ### Code Generation
 
@@ -83,26 +141,7 @@ EchoNext is production-ready with comprehensive features:
 
 ## Medium Term (6-12 months)
 
-### File Handling
-
-- [ ] **File Upload Support in OpenAPI**
-  - Automatic multipart/form-data handling
-  - File validation (size, type)
-  - Upload progress tracking
-  - OpenAPI documentation for file endpoints
-
 ### Real-time Features
-
-- [ ] **WebSocket Support**
-  ```go
-  app.WS("/chat", chatHandler, echonext.WebSocket{
-      Summary: "Real-time chat",
-  })
-  ```
-  - Type-safe WebSocket handlers
-  - Event-based messaging
-  - Connection management
-  - Auto-reconnection support
 
 - [ ] **Server-Sent Events (SSE)**
   ```go
@@ -113,19 +152,6 @@ EchoNext is production-ready with comprehensive features:
   - Type-safe SSE handlers
   - Event streaming
   - Client reconnection
-
-### GraphQL Integration
-
-- [ ] **GraphQL Support**
-  ```go
-  app.GraphQL("/graphql", schema, echonext.GraphQL{
-      Summary: "GraphQL API",
-  })
-  ```
-  - Type-safe resolvers
-  - Schema generation from structs
-  - GraphQL playground integration
-  - Subscriptions support
 
 ### Advanced Features
 
@@ -142,16 +168,6 @@ EchoNext is production-ready with comprehensive features:
   - Response caching
 
 ## Long Term (12+ months)
-
-### Code Generation from Specs
-
-- [ ] **Generate from OpenAPI**
-  ```bash
-  echonext import openapi.yaml
-  ```
-  - Generate handlers from OpenAPI spec
-  - Generate client SDKs
-  - Keep code and spec in sync
 
 - [ ] **Generate from Database Schema**
   ```bash

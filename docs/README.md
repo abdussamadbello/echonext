@@ -15,6 +15,9 @@ Welcome to the EchoNext documentation! This comprehensive guide will help you bu
 - [OpenAPI Generation](./guides/openapi.md) - Generate API documentation
 - [Error Handling](./guides/error-handling.md) - Handle errors gracefully
 - [Middleware](./guides/middleware.md) - Use and create middleware
+- [File Uploads](./guides/file-uploads.md) - Type-safe file uploads with OpenAPI docs
+- [WebSocket](./guides/websocket.md) - Real-time communication with Hub pattern
+- [GraphQL](./guides/graphql.md) - GraphQL integration with gqlgen
 - [Testing](./guides/testing.md) - Test your EchoNext applications
 - [Deployment](./guides/deployment.md) - Deploy to production
 
@@ -80,7 +83,7 @@ Welcome to the EchoNext documentation! This comprehensive guide will help you bu
 
 ## 📖 Documentation Version
 
-This documentation is for EchoNext **v1.0.0** and later.
+This documentation is for EchoNext **v1.4.0** and later.
 
 ## 🤝 Help Improve This Documentation
 

@@ -5,7 +5,51 @@ All notable changes to EchoNext will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.4.0] - 2024-12-29
+
+### Added
+
+#### File Upload Support
+- ✅ Type-safe file uploads with `upload.File` type
+- ✅ `app.Upload()` method for file upload route registration
+- ✅ `file.SaveTo()` method for easy file persistence
+- ✅ File validation (size, type, extension)
+- ✅ Multiple file upload support
+- ✅ OpenAPI documentation for file endpoints
+- ✅ CLI generator: `echonext generate upload [name]`
+- ✅ Complete example: `examples/upload-demo/`
+
+#### WebSocket Support
+- ✅ Type-safe WebSocket handlers with `websocket.Connection`
+- ✅ `app.WS()` method for WebSocket route registration
+- ✅ Hub pattern for connection management and broadcasting
+- ✅ `IsWebSocket` field in RouteInfo for OpenAPI support
+- ✅ CLI generator: `echonext generate websocket [name]`
+- ✅ Complete example: `examples/websocket-demo/`
+
+#### GraphQL Integration
+- ✅ Seamless gqlgen integration via `graphql.Config`
+- ✅ `app.GraphQL()` method for GraphQL endpoint registration
+- ✅ Echo context access in resolvers with `graphql.GetEchoContext()`
+- ✅ GraphQL Playground integration
+- ✅ Query caching with generic LRU (gqlgen v0.17.85)
+- ✅ CLI generator: `echonext generate graphql`
+- ✅ Complete example: `examples/graphql-demo/`
+
+#### Developer Experience
+- ✅ Hot reload development server (`echonext dev`)
+- ✅ Enhanced test runner (`echonext test`)
+- ✅ Build automation (`echonext build`)
+
+#### Code Generation
+- ✅ Generate from OpenAPI spec (`echonext generate openapi`)
+- ✅ WebSocket handler templates (handler, hub, message)
+- ✅ Upload handler templates (handler, dto)
+
+### Changed
+- Updated gqlgen dependency to v0.17.85 with generic LRU cache support
+
+## [1.3.0] - 2024-12-09
 
 ### Added
 
@@ -37,17 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Middleware tests (RequestID, Metrics, StructuredLogger)
   - Response assertion tests
 
-### Planned
-- Hot reload development command (`echonext dev`)
-- Enhanced test runner (`echonext test`)
-- Build automation (`echonext build`)
-- Custom template support for code generation
-- File upload support in OpenAPI spec
-- WebSocket support with type safety
-- GraphQL integration
-- Code generation from OpenAPI spec
-
-## [1.0.0] - Current
+## [1.0.0] - 2024-12-01
 
 ### Added
 

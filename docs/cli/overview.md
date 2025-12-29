@@ -19,7 +19,9 @@ echonext --version
 ### Project Management
 
 - `echonext init` - Initialize a new EchoNext project
-- `echonext dev` - Start development server with hot reload (planned)
+- `echonext dev` - Start development server with hot reload
+- `echonext test` - Run tests with enhanced reporting
+- `echonext build` - Build optimized production binary
 
 ### Code Generation
 
@@ -30,6 +32,10 @@ echonext --version
 - `echonext generate dto` - Generate request/response DTOs
 - `echonext generate middleware` - Generate custom middleware
 - `echonext generate otel` - Generate OpenTelemetry setup
+- `echonext generate websocket` - Generate WebSocket handler with Hub pattern
+- `echonext generate upload` - Generate file upload handler
+- `echonext generate graphql` - Generate GraphQL boilerplate with gqlgen
+- `echonext generate openapi` - Generate code from OpenAPI specification
 
 ### Database Management (Atlas)
 
@@ -497,7 +503,133 @@ type User struct {
 
 ### Add Custom Templates
 
-(Feature planned for future release)
+Place custom templates in `~/.echonext/templates/` to override defaults.
+
+## New Generator Commands (v1.4.0)
+
+### echonext generate websocket
+
+Generate WebSocket handler with Hub pattern for real-time communication.
+
+```bash
+echonext generate websocket HANDLER_NAME
+```
+
+**Example:**
+```bash
+echonext generate websocket chat
+```
+
+**Generates:**
+```
+internal/ws/chat/
+├── handler.go     # WebSocket connection handler
+├── hub.go         # Connection management and broadcasting
+└── message.go     # Message types and serialization
+```
+
+**Usage in main.go:**
+```go
+import "myapp/internal/ws/chat"
+
+hub := chat.NewHub()
+go hub.Run()
+
+app.WS("/ws/chat", chat.NewHandler(hub))
+```
+
+### echonext generate upload
+
+Generate file upload handler with validation.
+
+```bash
+echonext generate upload HANDLER_NAME
+```
+
+**Example:**
+```bash
+echonext generate upload avatar
+```
+
+**Generates:**
+```
+internal/upload/avatar/
+├── handler.go     # Upload handler with validation
+└── dto.go         # Request/Response types
+```
+
+**Usage in main.go:**
+```go
+import "myapp/internal/upload/avatar"
+
+handler := avatar.NewHandler("/uploads")
+app.Upload("/avatar", handler.Upload, echonext.Route{
+    Summary: "Upload avatar image",
+})
+```
+
+### echonext generate graphql
+
+Generate GraphQL boilerplate with gqlgen integration.
+
+```bash
+echonext generate graphql
+```
+
+**Generates:**
+```
+graph/
+├── schema.graphqls    # GraphQL schema
+├── resolver.go        # Resolver struct
+└── generated/         # Generated code (after gqlgen generate)
+gqlgen.yml             # gqlgen configuration
+tools/tools.go         # Tool dependencies
+```
+
+**Usage:**
+```bash
+# After generation
+go generate ./...
+
+# In main.go
+app.GraphQL(graphql.Config{
+    Path: "/graphql",
+    PlaygroundPath: "/playground",
+    Schema: graph.NewExecutableSchema(graph.Config{
+        Resolvers: graph.NewResolver(),
+    }),
+})
+```
+
+### echonext generate openapi
+
+Generate EchoNext code from an OpenAPI specification.
+
+```bash
+echonext generate openapi SPEC_FILE [flags]
+```
+
+**Flags:**
+- `--output` - Output directory (default: current directory)
+- `--package` - Package name (default: "api")
+
+**Example:**
+```bash
+# From local file
+echonext generate openapi api.yaml --output=./generated
+
+# From URL
+echonext generate openapi https://api.example.com/openapi.json
+```
+
+**Generates:**
+```
+generated/
+├── models/models.go      # Data models
+├── dto/dto.go           # Request/Response DTOs
+├── handlers/handlers.go  # Handler stubs
+└── routes.go            # Route registration
+```
 
 ## Tips and Best Practices
 
