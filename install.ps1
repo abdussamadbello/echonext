@@ -77,7 +77,7 @@ if ($UserPath -notlike "*$InstallDir*") {
 
 Write-Host ""
 Write-Host "Verify installation:" -ForegroundColor Cyan
-Write-Host "  echonext --version"
+Write-Host "  echonext version"
 Write-Host ""
 Write-Host "Get started:" -ForegroundColor Cyan
 Write-Host "  echonext init myproject"

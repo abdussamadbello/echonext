@@ -82,7 +82,7 @@ fi
 
 echo ""
 echo "Verify installation:"
-echo "  echonext --version"
+echo "  echonext version"
 echo ""
 echo "Get started:"
 echo "  echonext init myproject"
