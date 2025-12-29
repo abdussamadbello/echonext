@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"runtime/debug"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -78,6 +81,12 @@ func newUpgradeCmd() *cobra.Command {
 			fmt.Println("Upgrading EchoNext CLI...")
 			fmt.Printf("Current version: %s\n\n", getVersion())
 
+			// Get current executable path
+			currentExe, err := os.Executable()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Could not determine current executable path: %v\n", err)
+			}
+
 			// Run go install to get latest version
 			installCmd := exec.Command("go", "install", "github.com/abdussamadbello/echonext/cmd/echonext-cli@latest")
 			installCmd.Stdout = os.Stdout
@@ -86,6 +95,42 @@ func newUpgradeCmd() *cobra.Command {
 			if err := installCmd.Run(); err != nil {
 				fmt.Fprintf(os.Stderr, "Upgrade failed: %v\n", err)
 				os.Exit(1)
+			}
+
+			// Get GOBIN path
+			goBinCmd := exec.Command("go", "env", "GOBIN")
+			goBinOutput, _ := goBinCmd.Output()
+			goBin := strings.TrimSpace(string(goBinOutput))
+			if goBin == "" {
+				goPathCmd := exec.Command("go", "env", "GOPATH")
+				goPathOutput, _ := goPathCmd.Output()
+				goBin = filepath.Join(strings.TrimSpace(string(goPathOutput)), "bin")
+			}
+
+			// Determine source binary name based on OS
+			sourceBinary := filepath.Join(goBin, "echonext-cli")
+			if runtime.GOOS == "windows" {
+				sourceBinary += ".exe"
+			}
+
+			// If current exe is different from GOBIN location, copy the new binary
+			if currentExe != "" && currentExe != sourceBinary {
+				// Check if source exists
+				if _, err := os.Stat(sourceBinary); err == nil {
+					// Read the new binary
+					newBinary, err := os.ReadFile(sourceBinary)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "Warning: Could not read new binary: %v\n", err)
+					} else {
+						// Write to current location
+						if err := os.WriteFile(currentExe, newBinary, 0755); err != nil {
+							fmt.Fprintf(os.Stderr, "Warning: Could not update %s: %v\n", currentExe, err)
+							fmt.Fprintf(os.Stderr, "You may need to run the install script again or copy manually.\n")
+						} else {
+							fmt.Printf("Updated binary at %s\n", currentExe)
+						}
+					}
+				}
 			}
 
 			fmt.Println("\nUpgrade complete!")
