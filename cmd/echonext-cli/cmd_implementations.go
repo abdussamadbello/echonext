@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/abdussamadbello/echonext/cmd/echonext-cli/generator"
 	"github.com/spf13/cobra"
 )
 
@@ -1009,4 +1010,131 @@ func formatSize(bytes int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// runGenerateOpenAPI generates code from an OpenAPI specification
+func runGenerateOpenAPI(specPath, outputDir, packageName string, generateTests bool) error {
+	fmt.Printf("Generating code from OpenAPI spec: %s\n", specPath)
+	fmt.Printf("Output directory: %s\n", outputDir)
+	fmt.Printf("Package name: %s\n", packageName)
+	fmt.Println()
+
+	// Create generator
+	gen, err := NewOpenAPIGenerator(specPath, GeneratorOptions{
+		OutputDir:     outputDir,
+		PackageName:   packageName,
+		GenerateTests: generateTests,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create generator: %w", err)
+	}
+
+	// Run generation
+	files, err := gen.Generate()
+	if err != nil {
+		return fmt.Errorf("generation failed: %w", err)
+	}
+
+	// Report generated files
+	fmt.Println("Generated files:")
+	for _, f := range files.Models {
+		fmt.Printf("  - %s\n", f)
+	}
+	for _, f := range files.DTOs {
+		fmt.Printf("  - %s\n", f)
+	}
+	for _, f := range files.Handlers {
+		fmt.Printf("  - %s\n", f)
+	}
+	if files.Routes != "" {
+		fmt.Printf("  - %s\n", files.Routes)
+	}
+	for _, f := range files.Tests {
+		fmt.Printf("  - %s\n", f)
+	}
+
+	fmt.Println()
+	fmt.Println("Code generation complete!")
+	fmt.Printf("\nNext steps:\n")
+	fmt.Printf("  1. Review generated code in %s\n", outputDir)
+	fmt.Printf("  2. Implement handler logic in handlers/handlers.go\n")
+	fmt.Printf("  3. Register routes in your main.go:\n")
+	fmt.Printf("     %s.RegisterRoutes(app)\n", packageName)
+
+	return nil
+}
+
+// runGenerateGraphQL generates GraphQL boilerplate for gqlgen integration
+func runGenerateGraphQL(cmd *cobra.Command, args []string) {
+	fmt.Println("Generating GraphQL boilerplate...")
+
+	if !isEchoNextProject() {
+		log.Fatal("Not in an EchoNext project. Run this command from your project root.")
+	}
+
+	module, err := getModuleName()
+	if err != nil {
+		log.Fatalf("Failed to read module name: %v", err)
+	}
+
+	// Create template engine
+	engine, err := generator.NewEngine()
+	if err != nil {
+		log.Fatalf("Failed to create template engine: %v", err)
+	}
+
+	// Template data
+	data := map[string]string{
+		"Module": module,
+	}
+
+	// Create directories
+	graphDir := "graph"
+	if err := os.MkdirAll(graphDir, 0755); err != nil {
+		log.Fatalf("Failed to create graph directory: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(graphDir, "model"), 0755); err != nil {
+		log.Fatalf("Failed to create model directory: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(graphDir, "examples"), 0755); err != nil {
+		log.Fatalf("Failed to create examples directory: %v", err)
+	}
+	if err := os.MkdirAll("tools", 0755); err != nil {
+		log.Fatalf("Failed to create tools directory: %v", err)
+	}
+
+	// Generate files from templates
+	templates := []struct {
+		template string
+		output   string
+	}{
+		{"graphql/gqlgen.yml.tmpl", "gqlgen.yml"},
+		{"graphql/schema.graphqls.tmpl", filepath.Join(graphDir, "schema.graphqls")},
+		{"graphql/resolver.go.tmpl", filepath.Join(graphDir, "resolver.go")},
+		{"graphql/server.go.tmpl", filepath.Join(graphDir, "examples", "server_example.go.txt")},
+		{"graphql/tools.go.tmpl", filepath.Join("tools", "tools.go")},
+	}
+
+	for _, t := range templates {
+		content, err := engine.Execute(t.template, data)
+		if err != nil {
+			log.Fatalf("Failed to execute template %s: %v", t.template, err)
+		}
+		if err := os.WriteFile(t.output, []byte(content), 0644); err != nil {
+			log.Fatalf("Failed to write %s: %v", t.output, err)
+		}
+		fmt.Printf("  Created %s\n", t.output)
+	}
+
+	fmt.Println()
+	fmt.Println("GraphQL boilerplate generated!")
+	fmt.Println()
+	fmt.Println("Next steps:")
+	fmt.Println("  1. Install gqlgen: go get github.com/99designs/gqlgen")
+	fmt.Println("  2. Edit graph/schema.graphqls with your schema")
+	fmt.Println("  3. Run: go run github.com/99designs/gqlgen generate")
+	fmt.Println("  4. Implement resolvers in graph/*.resolvers.go")
+	fmt.Println("  5. See graph/examples/server_example.go.txt for integration")
+	fmt.Println()
+	fmt.Println("Documentation: https://gqlgen.com/getting-started/")
 }

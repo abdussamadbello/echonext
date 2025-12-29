@@ -1,0 +1,44 @@
+# GraphQL schema
+# Learn about GraphQL syntax: https://graphql.org/learn/
+
+type Query {
+  # Get all todos
+  todos: [Todo!]!
+  # Get a specific todo by ID
+  todo(id: ID!): Todo
+}
+
+type Mutation {
+  # Create a new todo
+  createTodo(input: NewTodo!): Todo!
+  # Update an existing todo
+  updateTodo(id: ID!, input: UpdateTodo!): Todo!
+  # Delete a todo
+  deleteTodo(id: ID!): Boolean!
+}
+
+# A Todo item
+type Todo {
+  id: ID!
+  text: String!
+  done: Boolean!
+  user: User!
+}
+
+# A User who owns todos
+type User {
+  id: ID!
+  name: String!
+}
+
+# Input for creating a new todo
+input NewTodo {
+  text: String!
+  userId: String!
+}
+
+# Input for updating a todo
+input UpdateTodo {
+  text: String
+  done: Boolean
+}

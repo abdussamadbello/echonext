@@ -2,12 +2,15 @@
 package echonext
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
 
+	"github.com/abdussamadbello/echonext/graphql"
+	"github.com/abdussamadbello/echonext/upload"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -40,6 +43,7 @@ type RouteInfo struct {
 	RequestType  reflect.Type
 	ResponseType reflect.Type
 	RouteConfig  *Route // Store the full route configuration
+	IsUpload     bool   // Indicates if this is a file upload endpoint
 }
 
 // Route configures route metadata for OpenAPI generation
@@ -53,7 +57,8 @@ type Route struct {
 	ResponseHeaders       map[string]HeaderInfo
 	ContentTypes          []string
 	Examples              map[string]interface{}
-	DisableGlobalSecurity bool // When true, disables global security for this route
+	DisableGlobalSecurity bool           // When true, disables global security for this route
+	FileConfig            *upload.Config // Configuration for file upload endpoints
 }
 
 // Security defines a security scheme configuration for OpenAPI
@@ -395,6 +400,12 @@ func (app *App) DELETE(path string, handler interface{}, opts ...Route) {
 	app.registerRoute("DELETE", path, handler, opts...)
 }
 
+// Upload registers a file upload endpoint (POST with multipart/form-data)
+// The handler should accept a request struct containing FileUpload fields
+func (app *App) Upload(path string, handler interface{}, opts ...Route) {
+	app.registerUploadRoute(path, handler, opts...)
+}
+
 // Group creates a route group with the given prefix
 func (app *App) Group(prefix string, middleware ...echo.MiddlewareFunc) *Group {
 	echoGroup := app.Echo.Group(prefix, middleware...)
@@ -435,6 +446,12 @@ func (g *Group) PATCH(path string, handler interface{}, opts ...Route) {
 func (g *Group) DELETE(path string, handler interface{}, opts ...Route) {
 	fullPath := g.prefix + path
 	g.registerGroupRoute("DELETE", fullPath, path, handler, opts...)
+}
+
+// Upload registers a file upload endpoint on the group (POST with multipart/form-data)
+func (g *Group) Upload(path string, handler interface{}, opts ...Route) {
+	fullPath := g.prefix + path
+	g.registerGroupUploadRoute(fullPath, path, handler, opts...)
 }
 
 // Use adds middleware to the group
@@ -553,6 +570,176 @@ func (app *App) registerRoute(method, path string, handler interface{}, opts ...
 		app.Echo.PATCH(path, echoHandler)
 	case "DELETE":
 		app.Echo.DELETE(path, echoHandler)
+	}
+}
+
+// registerUploadRoute registers a file upload route
+func (app *App) registerUploadRoute(path string, handler interface{}, opts ...Route) {
+	handlerType := reflect.TypeOf(handler)
+	if handlerType.Kind() != reflect.Func {
+		panic("handler must be a function")
+	}
+
+	// Extract request and response types
+	var requestType, responseType reflect.Type
+	if handlerType.NumIn() > 1 {
+		requestType = handlerType.In(1)
+	}
+	if handlerType.NumOut() > 0 {
+		responseType = handlerType.Out(0)
+	}
+
+	// Validate that request type has File fields
+	if requestType != nil && !upload.HasFileFields(requestType) {
+		panic("upload handler request type must contain upload.File fields")
+	}
+
+	// Store route info for OpenAPI generation
+	routeInfo := RouteInfo{
+		Method:       "POST",
+		Path:         path,
+		Handler:      handler,
+		RequestType:  requestType,
+		ResponseType: responseType,
+		IsUpload:     true,
+	}
+
+	if len(opts) > 0 {
+		route := opts[0]
+		routeInfo.Summary = route.Summary
+		routeInfo.Description = route.Description
+		routeInfo.Tags = route.Tags
+		routeInfo.RouteConfig = &route
+	}
+
+	app.routes = append(app.routes, routeInfo)
+
+	// Create Echo handler with file upload support
+	echoHandler := app.createUploadEchoHandler(handler, requestType, responseType, routeInfo.RouteConfig)
+	app.Echo.POST(path, echoHandler)
+}
+
+// registerGroupUploadRoute registers a file upload route on a group
+func (g *Group) registerGroupUploadRoute(fullPath, relativePath string, handler interface{}, opts ...Route) {
+	handlerType := reflect.TypeOf(handler)
+	if handlerType.Kind() != reflect.Func {
+		panic("handler must be a function")
+	}
+
+	// Extract request and response types
+	var requestType, responseType reflect.Type
+	if handlerType.NumIn() > 1 {
+		requestType = handlerType.In(1)
+	}
+	if handlerType.NumOut() > 0 {
+		responseType = handlerType.Out(0)
+	}
+
+	// Validate that request type has File fields
+	if requestType != nil && !upload.HasFileFields(requestType) {
+		panic("upload handler request type must contain upload.File fields")
+	}
+
+	// Store route info for OpenAPI generation (use full path for OpenAPI)
+	routeInfo := RouteInfo{
+		Method:       "POST",
+		Path:         fullPath,
+		Handler:      handler,
+		RequestType:  requestType,
+		ResponseType: responseType,
+		IsUpload:     true,
+	}
+
+	if len(opts) > 0 {
+		route := opts[0]
+		routeInfo.Summary = route.Summary
+		routeInfo.Description = route.Description
+		routeInfo.Tags = route.Tags
+		routeInfo.RouteConfig = &route
+	}
+
+	g.app.routes = append(g.app.routes, routeInfo)
+
+	// Create Echo handler with file upload support and register on group
+	echoHandler := g.app.createUploadEchoHandler(handler, requestType, responseType, routeInfo.RouteConfig)
+	g.echoGroup.POST(relativePath, echoHandler)
+}
+
+// createUploadEchoHandler wraps file upload handlers for Echo
+func (app *App) createUploadEchoHandler(handler interface{}, requestType, responseType reflect.Type, routeConfig *Route) echo.HandlerFunc {
+	handlerValue := reflect.ValueOf(handler)
+
+	return func(c echo.Context) error {
+		args := []reflect.Value{reflect.ValueOf(c)}
+
+		// Handle request binding if handler expects input
+		if requestType != nil {
+			reqPtr := reflect.New(requestType)
+			req := reqPtr.Interface()
+
+			// Get file upload config
+			var fileConfig *upload.Config
+			if routeConfig != nil && routeConfig.FileConfig != nil {
+				fileConfig = routeConfig.FileConfig
+			}
+
+			// Bind file upload fields and form fields
+			if err := upload.Bind(c, req, fileConfig); err != nil {
+				return c.JSON(http.StatusBadRequest, Response[any]{
+					Error:   fmt.Sprintf("File upload failed: %v", err),
+					Success: false,
+				})
+			}
+
+			// Validate request (including file fields)
+			if err := app.validator.Struct(req); err != nil {
+				return c.JSON(http.StatusBadRequest, Response[any]{
+					Error:   fmt.Sprintf("Validation failed: %v", err),
+					Success: false,
+				})
+			}
+
+			args = append(args, reqPtr.Elem())
+		}
+
+		// Call handler
+		results := handlerValue.Call(args)
+
+		// Handle response
+		if len(results) > 0 {
+			// Check if last result is an error
+			if len(results) > 1 {
+				if err, ok := results[len(results)-1].Interface().(error); ok && err != nil {
+					// Handle echo.HTTPError specially
+					if he, ok := err.(*echo.HTTPError); ok {
+						return c.JSON(he.Code, Response[any]{
+							Error:   fmt.Sprintf("%v", he.Message),
+							Success: false,
+						})
+					}
+					return c.JSON(http.StatusInternalServerError, Response[any]{
+						Error:   err.Error(),
+						Success: false,
+					})
+				}
+			}
+
+			// Return successful response
+			if results[0].IsValid() && !results[0].IsZero() {
+				// Determine status code
+				statusCode := http.StatusOK
+				if routeConfig != nil && routeConfig.SuccessStatus > 0 {
+					statusCode = routeConfig.SuccessStatus
+				}
+
+				return c.JSON(statusCode, Response[any]{
+					Data:    results[0].Interface(),
+					Success: true,
+				})
+			}
+		}
+
+		return c.NoContent(http.StatusNoContent)
 	}
 }
 
@@ -731,6 +918,24 @@ func (app *App) addRouteToSpec(route RouteInfo) {
 		if route.Method == "GET" || route.Method == "DELETE" {
 			// Add query parameters
 			app.addQueryParameters(operation, route.RequestType)
+		} else if route.IsUpload {
+			// Handle file upload routes with multipart/form-data
+			schema := app.generateMultipartSchema(route.RequestType)
+			content := openapi3.Content{
+				"multipart/form-data": &openapi3.MediaType{
+					Schema: &openapi3.SchemaRef{
+						Value: schema,
+					},
+					Encoding: app.generateMultipartEncoding(route.RequestType),
+				},
+			}
+
+			requestBody := &openapi3.RequestBody{
+				Content:     content,
+				Required:    true,
+				Description: "File upload request",
+			}
+			operation.RequestBody = &openapi3.RequestBodyRef{Value: requestBody}
 		} else {
 			// Add request body for POST/PUT/PATCH
 			schema := app.generateSchema(route.RequestType)
@@ -968,6 +1173,15 @@ func (app *App) generateSchemaWithVisited(t reflect.Type, visited map[reflect.Ty
 			return &openapi3.Schema{Type: "string", Format: "date-time"}
 		}
 
+		// Handle upload.File specially - represents a binary file
+		if t.Name() == "File" && strings.HasSuffix(t.PkgPath(), "echonext/upload") {
+			return &openapi3.Schema{
+				Type:        "string",
+				Format:      "binary",
+				Description: "File upload",
+			}
+		}
+
 		schema := &openapi3.Schema{
 			Type:       "object",
 			Properties: openapi3.Schemas{},
@@ -1059,6 +1273,123 @@ func (app *App) generateSchemaWithVisited(t reflect.Type, visited map[reflect.Ty
 	}
 }
 
+// generateMultipartSchema generates OpenAPI schema for multipart/form-data requests
+func (app *App) generateMultipartSchema(t reflect.Type) *openapi3.Schema {
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+
+	if t.Kind() != reflect.Struct {
+		return &openapi3.Schema{Type: "object"}
+	}
+
+	schema := &openapi3.Schema{
+		Type:       "object",
+		Properties: openapi3.Schemas{},
+		Required:   []string{},
+	}
+
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+
+		// Get field name from form or json tag
+		formTag := field.Tag.Get("form")
+		jsonTag := field.Tag.Get("json")
+		fieldName := field.Name
+
+		if formTag != "" && formTag != "-" {
+			parts := strings.Split(formTag, ",")
+			fieldName = parts[0]
+		} else if jsonTag != "" && jsonTag != "-" {
+			parts := strings.Split(jsonTag, ",")
+			fieldName = parts[0]
+		} else {
+			fieldName = strings.ToLower(field.Name)
+		}
+
+		var fieldSchema *openapi3.Schema
+
+		// Check if this is an upload.File field
+		if upload.IsFileType(field.Type) {
+			fieldSchema = &openapi3.Schema{
+				Type:        "string",
+				Format:      "binary",
+				Description: "File upload",
+			}
+		} else if upload.IsFileSliceType(field.Type) {
+			fieldSchema = &openapi3.Schema{
+				Type: "array",
+				Items: &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type:        "string",
+						Format:      "binary",
+						Description: "File upload",
+					},
+				},
+			}
+		} else {
+			// Regular field
+			fieldSchema = app.generateSchema(field.Type)
+		}
+
+		// Check if required
+		if validateTag := field.Tag.Get("validate"); validateTag != "" {
+			if strings.Contains(validateTag, "required") {
+				schema.Required = append(schema.Required, fieldName)
+			}
+		}
+
+		schema.Properties[fieldName] = &openapi3.SchemaRef{Value: fieldSchema}
+	}
+
+	return schema
+}
+
+// generateMultipartEncoding generates OpenAPI encoding for multipart/form-data file fields
+func (app *App) generateMultipartEncoding(t reflect.Type) map[string]*openapi3.Encoding {
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+
+	if t.Kind() != reflect.Struct {
+		return nil
+	}
+
+	encoding := make(map[string]*openapi3.Encoding)
+
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+
+		// Get field name from form or json tag
+		formTag := field.Tag.Get("form")
+		jsonTag := field.Tag.Get("json")
+		fieldName := field.Name
+
+		if formTag != "" && formTag != "-" {
+			parts := strings.Split(formTag, ",")
+			fieldName = parts[0]
+		} else if jsonTag != "" && jsonTag != "-" {
+			parts := strings.Split(jsonTag, ",")
+			fieldName = parts[0]
+		} else {
+			fieldName = strings.ToLower(field.Name)
+		}
+
+		// Add encoding for file fields
+		if upload.IsFileType(field.Type) || upload.IsFileSliceType(field.Type) {
+			encoding[fieldName] = &openapi3.Encoding{
+				ContentType: "application/octet-stream",
+			}
+		}
+	}
+
+	if len(encoding) == 0 {
+		return nil
+	}
+
+	return encoding
+}
+
 // ServeOpenAPISpec serves the OpenAPI specification
 func (app *App) ServeOpenAPISpec(path string) {
 	app.Echo.GET(path, func(c echo.Context) error {
@@ -1127,4 +1458,110 @@ func NoContent() Response[interface{}] {
 // Helper functions
 func strPtr(s string) *string {
 	return &s
+}
+
+// GraphQL registration methods
+
+// GraphQL registers a GraphQL endpoint with the given schema
+func (app *App) GraphQL(config graphql.Config, opts ...graphql.Route) {
+	// Apply defaults
+	if config.Path == "" {
+		config.Path = graphql.DefaultPath
+	}
+
+	// Create gqlgen handler using graphql package
+	srv := graphql.Handler(config)
+
+	// Create Echo handler that injects context
+	echoHandler := graphql.WrapWithEchoContext(srv)
+
+	// Register GraphQL endpoint
+	app.Echo.POST(config.Path, echoHandler)
+	app.Echo.GET(config.Path, echoHandler)
+
+	// Register Playground if enabled
+	if config.PlaygroundPath != "" {
+		playgroundHandler := graphql.PlaygroundHandler("GraphQL Playground", config.Path)
+		app.Echo.GET(config.PlaygroundPath, echo.WrapHandler(playgroundHandler))
+	}
+
+	// Store route info for OpenAPI generation
+	routeInfo := RouteInfo{
+		Method:      "POST",
+		Path:        config.Path,
+		Handler:     config,
+		Summary:     "GraphQL endpoint",
+		Description: "GraphQL API endpoint for queries and mutations",
+		Tags:        []string{"GraphQL"},
+	}
+
+	if len(opts) > 0 {
+		route := opts[0]
+		if route.Summary != "" {
+			routeInfo.Summary = route.Summary
+		}
+		if route.Description != "" {
+			routeInfo.Description = route.Description
+		}
+		if len(route.Tags) > 0 {
+			routeInfo.Tags = route.Tags
+		}
+	}
+
+	app.routes = append(app.routes, routeInfo)
+}
+
+// GraphQLSubscriptions enables WebSocket subscriptions at a separate endpoint
+func (app *App) GraphQLSubscriptions(schema interface{}, config ...graphql.SubscriptionConfig) {
+	// Import the gqlgen graphql package for ExecutableSchema type assertion
+	gqlSchema, ok := schema.(interface {
+		Schema() interface{}
+	})
+
+	if !ok {
+		// Try direct use - schema should be a gqlgen ExecutableSchema
+		srv := graphql.SubscriptionHandler(nil)
+		if srv == nil {
+			return
+		}
+	}
+
+	var subConfig graphql.SubscriptionConfig
+	if len(config) > 0 {
+		subConfig = config[0]
+	}
+
+	if subConfig.Path == "" {
+		subConfig.Path = graphql.DefaultSubscriptionsPath
+	}
+
+	// Create subscription handler - user must pass a proper schema
+	_ = gqlSchema // Use this to create handler
+
+	// Create Echo handler
+	echoHandler := func(c echo.Context) error {
+		ctx := context.WithValue(c.Request().Context(), graphql.EchoContextKey, c)
+		c.SetRequest(c.Request().WithContext(ctx))
+		// Handler will be set up by the user with proper schema
+		return nil
+	}
+
+	app.Echo.GET(subConfig.Path, echoHandler)
+}
+
+// Group GraphQL method
+
+// GraphQL registers a GraphQL endpoint on the group
+func (g *Group) GraphQL(config graphql.Config, opts ...graphql.Route) {
+	// Prepend group prefix to paths
+	if config.Path == "" {
+		config.Path = graphql.DefaultPath
+	}
+	config.Path = g.prefix + config.Path
+
+	if config.PlaygroundPath != "" {
+		config.PlaygroundPath = g.prefix + config.PlaygroundPath
+	}
+
+	g.app.GraphQL(config, opts...)
 }

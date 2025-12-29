@@ -1,0 +1,57 @@
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/abdussamadbello/echonext"
+	"{{ .Module }}/graph"
+)
+
+func main() {
+	app := echonext.New()
+
+	// Create the GraphQL schema
+	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{
+		Resolvers: graph.NewResolver(),
+	}))
+
+	// Using EchoNext's GraphQL integration
+	app.GraphQL(echonext.GraphQLConfig{
+		Path:           "/graphql",
+		PlaygroundPath: "/playground",
+		Schema:         graph.NewExecutableSchema(graph.Config{
+			Resolvers: graph.NewResolver(),
+		}),
+	})
+
+	// OR: Use Echo's handler wrapping directly
+	// app.Echo.POST("/graphql", echo.WrapHandler(srv))
+	// app.Echo.GET("/playground", echo.WrapHandler(playground.Handler("GraphQL", "/graphql")))
+
+	log.Println("Starting server on :8080")
+	log.Println("GraphQL Playground: http://localhost:8080/playground")
+
+	if err := app.Start(":8080"); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// Example of getting Echo context in a resolver:
+//
+// func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
+//     // Get Echo context for authentication, etc.
+//     echoCtx := echonext.GetEchoContext(ctx)
+//     if echoCtx != nil {
+//         userID := echoCtx.Get("user_id")
+//         // Use userID for filtering, etc.
+//     }
+//     return r.todos, nil
+// }
+
+// Placeholder to avoid unused import
+var _ = context.Background
+var _ = playground.Handler
+var _ = handler.NewDefaultServer

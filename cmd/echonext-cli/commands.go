@@ -21,11 +21,15 @@ Available generators:
   dto         - Request/Response DTOs
   middleware  - Custom middleware
   otel        - OpenTelemetry instrumentation setup
+  openapi     - Generate code from OpenAPI specification
+  graphql     - Generate GraphQL boilerplate with gqlgen
 
 Examples:
   echonext generate domain user
   echonext generate handler product
-  echonext generate otel`,
+  echonext generate otel
+  echonext generate openapi api.yaml
+  echonext generate graphql`,
 		Aliases: []string{"gen", "g"},
 	}
 
@@ -38,6 +42,8 @@ Examples:
 		newGenerateDTOCmd(),
 		newGenerateMiddlewareCmd(),
 		newGenerateOtelCmd(),
+		newGenerateOpenAPICmd(),
+		newGenerateGraphQLCmd(),
 	)
 
 	return cmd
@@ -277,6 +283,75 @@ Usage in your main.go:
 
   app.Use(middleware.OTELMiddleware("your-service"))`,
 		Run: runGenerateOtel,
+	}
+}
+
+func newGenerateOpenAPICmd() *cobra.Command {
+	var outputDir string
+	var packageName string
+	var generateTests bool
+
+	cmd := &cobra.Command{
+		Use:   "openapi [spec-file]",
+		Short: "Generate code from OpenAPI specification",
+		Long: `Generate Go code (models, handlers, DTOs, routes) from an OpenAPI specification.
+
+Supports OpenAPI 3.0 and 3.1 specifications in YAML or JSON format.
+Supports $ref resolution for external files and URLs.
+
+Generated files:
+  - models/models.go     - Data models from schema components
+  - dto/dto.go           - Request/Response DTOs
+  - handlers/handlers.go - Handler function stubs
+  - routes.go            - Route registration using EchoNext
+
+Examples:
+  echonext generate openapi api.yaml
+  echonext generate openapi api.yaml --output=./generated
+  echonext generate openapi api.yaml --package=api
+  echonext generate openapi https://api.example.com/openapi.json`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runGenerateOpenAPI(args[0], outputDir, packageName, generateTests)
+		},
+	}
+
+	cmd.Flags().StringVarP(&outputDir, "output", "o", "./generated", "Output directory")
+	cmd.Flags().StringVarP(&packageName, "package", "p", "api", "Go package name")
+	cmd.Flags().BoolVar(&generateTests, "tests", true, "Generate test files")
+
+	return cmd
+}
+
+func newGenerateGraphQLCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "graphql",
+		Short: "Generate GraphQL boilerplate with gqlgen",
+		Long: `Generate GraphQL boilerplate files for gqlgen integration.
+
+Creates:
+  - gqlgen.yml          - gqlgen configuration
+  - graph/schema.graphqls - Base GraphQL schema
+  - graph/resolver.go   - Resolver base struct
+  - graph/model/        - Model directory for generated types
+  - tools/tools.go      - Tool dependency for go generate
+
+After generation:
+  1. Install gqlgen: go get github.com/99designs/gqlgen
+  2. Edit graph/schema.graphqls with your schema
+  3. Run: go run github.com/99designs/gqlgen generate
+  4. Implement resolvers in graph/*.resolvers.go
+
+Example:
+  echonext generate graphql
+
+The generated code integrates with EchoNext's GraphQL support:
+  app.GraphQL(echonext.GraphQLConfig{
+      Schema: graph.NewExecutableSchema(graph.Config{
+          Resolvers: graph.NewResolver(),
+      }),
+  })`,
+		Run: runGenerateGraphQL,
 	}
 }
 
