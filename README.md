@@ -10,6 +10,10 @@ EchoNext is a type-safe wrapper around the Echo web framework that automatically
 - 📖 **Swagger UI** - Interactive API documentation out of the box
 - 🚀 **Zero Boilerplate** - Focus on business logic, not HTTP details
 - 🔌 **Echo Compatible** - Use all Echo middleware and features
+- 📁 **File Uploads** - Type-safe file uploads with OpenAPI documentation
+- 🔌 **WebSocket Support** - Real-time communication with Hub pattern
+- 📊 **GraphQL Integration** - Seamless gqlgen integration with context sharing
+- 🛠️ **CLI Tool** - Code generation, hot reload, and project scaffolding
 
 ## Installation
 
@@ -312,6 +316,192 @@ app.SetServers([]echonext.Server{
 })
 ```
 
+## File Uploads
+
+EchoNext provides type-safe file upload support with automatic OpenAPI documentation:
+
+```go
+import "github.com/abdussamadbello/echonext/upload"
+
+type AvatarRequest struct {
+    File *upload.File `form:"avatar" validate:"required"`
+}
+
+type AvatarResponse struct {
+    URL string `json:"url"`
+}
+
+func uploadAvatar(c echo.Context, req AvatarRequest) (AvatarResponse, error) {
+    // Access file metadata
+    fmt.Printf("Filename: %s, Size: %d\n", req.File.Filename, req.File.Size)
+
+    // Save the file easily
+    if err := req.File.SaveTo("/uploads/" + req.File.Filename); err != nil {
+        return AvatarResponse{}, err
+    }
+
+    return AvatarResponse{URL: "/uploads/" + req.File.Filename}, nil
+}
+
+// Register upload endpoint
+app.Upload("/avatar", uploadAvatar, echonext.Route{
+    Summary: "Upload avatar image",
+})
+```
+
+### Multiple Files & Configuration
+
+```go
+type DocumentsRequest struct {
+    Files []*upload.File `form:"documents" validate:"max=10"`
+}
+
+app.Upload("/documents", handler, echonext.Route{
+    FileConfig: &echonext.FileUploadConfig{
+        MaxFileSize:       10 << 20,  // 10MB per file
+        MaxTotalSize:      50 << 20,  // 50MB total
+        AllowedMIMETypes:  []string{"image/jpeg", "image/png", "application/pdf"},
+        AllowedExtensions: []string{".jpg", ".png", ".pdf"},
+        MaxFiles:          5,
+    },
+})
+```
+
+Generate upload handlers with the CLI:
+
+```bash
+echonext generate upload avatar
+```
+
+See [examples/upload-demo/](examples/upload-demo/) for a complete example.
+
+## WebSocket Support
+
+Type-safe WebSocket handlers with connection management:
+
+```go
+import "github.com/abdussamadbello/echonext/websocket"
+
+// Simple handler
+func chatHandler(conn *websocket.Connection) error {
+    for {
+        var msg ChatMessage
+        if err := conn.ReadJSON(&msg); err != nil {
+            return err
+        }
+        response := ChatResponse{Text: "Echo: " + msg.Text}
+        if err := conn.WriteJSON(response); err != nil {
+            return err
+        }
+    }
+}
+
+app.WS("/chat", chatHandler)
+```
+
+### Hub Pattern for Broadcasting
+
+```go
+type ChatHandler struct {
+    hub *websocket.Hub
+}
+
+func (h *ChatHandler) OnConnect(conn *websocket.Connection) error {
+    h.hub.Register(conn)
+    return nil
+}
+
+func (h *ChatHandler) OnMessage(conn *websocket.Connection, msg []byte) error {
+    return h.hub.Broadcast(msg)  // Broadcast to all connections
+}
+
+func (h *ChatHandler) OnDisconnect(conn *websocket.Connection, err error) {
+    h.hub.Unregister(conn)
+}
+
+// Usage
+hub := websocket.NewHub()
+go hub.Run()
+
+app.WS("/ws/chat", &ChatHandler{hub: hub})
+```
+
+Generate WebSocket handlers with the CLI:
+
+```bash
+echonext generate websocket chat
+```
+
+See [examples/websocket-demo/](examples/websocket-demo/) for a complete example.
+
+## GraphQL Integration
+
+Seamless integration with gqlgen:
+
+```go
+import "github.com/abdussamadbello/echonext/graphql"
+
+app.GraphQL(graphql.Config{
+    Path:           "/graphql",
+    PlaygroundPath: "/playground",
+    Schema:         graph.NewExecutableSchema(graph.Config{
+        Resolvers: graph.NewResolver(),
+    }),
+})
+```
+
+### Access Echo Context in Resolvers
+
+```go
+func (r *queryResolver) CurrentUser(ctx context.Context) (*model.User, error) {
+    echoCtx := graphql.GetEchoContext(ctx)
+    userID := echoCtx.Get("user_id").(string)
+    return r.userService.GetByID(userID)
+}
+```
+
+### GraphQL Configuration Options
+
+```go
+graphql.Config{
+    Path:                "/graphql",
+    PlaygroundPath:      "/playground",  // Empty to disable
+    Schema:              schema,
+    ComplexityLimit:     100,
+    QueryCacheSize:      1000,
+    EnableIntrospection: true,
+}
+```
+
+Generate GraphQL boilerplate with the CLI:
+
+```bash
+echonext generate graphql
+```
+
+See [examples/graphql-demo/](examples/graphql-demo/) for a complete example.
+
+## Code Generation from OpenAPI
+
+Generate EchoNext code from existing OpenAPI specifications:
+
+```bash
+# From local file
+echonext generate openapi api.yaml
+
+# From URL
+echonext generate openapi https://api.example.com/openapi.json
+
+# With options
+echonext generate openapi api.yaml --output=./generated --package=api
+```
+
+Generated files:
+- `models/models.go` - Data models from schema components
+- `dto/dto.go` - Request/Response DTOs
+- `handlers/handlers.go` - Handler function stubs
+- `routes.go` - Route registration
+
 ## Example Application
 
 Run the example Todo API:
@@ -340,12 +530,23 @@ go test -cover                  # Run with coverage
 
 ```
 echonext/
-├── echonext.go        # Main package implementation
-├── echonext_test.go   # Test suite
-├── example/
-│   └── main.go        # Complete example application
-├── go.mod
-└── README.md
+├── echonext.go              # Main package implementation
+├── echonext_test.go         # Test suite
+├── upload/                  # File upload package
+│   └── upload.go
+├── websocket/               # WebSocket package
+│   └── websocket.go
+├── graphql/                 # GraphQL integration
+│   └── graphql.go
+├── cmd/echonext-cli/        # CLI tool
+│   ├── commands.go
+│   └── generator/           # Code generation templates
+├── examples/
+│   ├── graphql-demo/        # GraphQL example
+│   ├── websocket-demo/      # WebSocket chat example
+│   └── upload-demo/         # File upload example
+├── pkg/contrib/             # Optional helper packages
+└── example/main.go          # Quick start example
 ```
 
 ## API Response Format
@@ -538,11 +739,17 @@ MIT License - see the [LICENSE](LICENSE) file for details.
 - [x] ✅ Atlas migration integration for schema management
 - [x] ✅ Complete example projects (Todo, Blog, E-commerce, Microservices)
 
+**v1.4.0:**
+- [x] ✅ Hot reload dev command (`echonext dev`)
+- [x] ✅ Enhanced test runner (`echonext test`)
+- [x] ✅ Build automation (`echonext build`)
+- [x] ✅ Support for file uploads in OpenAPI spec
+- [x] ✅ WebSocket support with type safety
+- [x] ✅ GraphQL integration
+- [x] ✅ Code generation from OpenAPI spec
+
 **Planned:**
-- [ ] Hot reload dev command (`echonext dev`)
-- [ ] Enhanced test runner (`echonext test`)
-- [ ] Build automation (`echonext build`)
-- [ ] Support for file uploads in OpenAPI spec
-- [ ] WebSocket support with type safety
-- [ ] GraphQL integration
-- [ ] Code generation from OpenAPI spec
+- [ ] Plugin system for custom generators
+- [ ] OpenTelemetry integration
+- [ ] gRPC support
+- [ ] API versioning helpers
