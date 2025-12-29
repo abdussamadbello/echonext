@@ -125,14 +125,14 @@ docker-push:
 	docker push {{ .Name }}-worker
 
 docker-up:
-	@echo "Starting services with docker-compose..."
-	cd infrastructure && docker-compose up -d
+	@echo "Starting services with docker compose..."
+	cd infrastructure && docker compose up -d
 
 docker-down:
 	@echo "Stopping services..."
-	cd infrastructure && docker-compose down
+	cd infrastructure && docker compose down
 
 # Development database
 dev-db:
 	@echo "Starting development database..."
-	cd infrastructure && docker-compose up -d postgres redis
+	cd infrastructure && docker compose up -d postgres redis

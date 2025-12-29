@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -47,8 +48,14 @@ type LoggerConfig struct {
 
 // Load reads configuration from file and environment variables
 func Load() (*Config, error) {
-	// Set config file properties
-	viper.SetConfigName("config")
+	// Determine environment from APP_ENV (defaults to "development")
+	env := os.Getenv("APP_ENV")
+	if env == "" {
+		env = "development"
+	}
+
+	// Set config file properties based on environment
+	viper.SetConfigName(env)
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("./configs")
 	viper.AddConfigPath(".")
@@ -88,7 +95,7 @@ func setDefaults() {
 
 	// Database defaults
 	viper.SetDefault("database.driver", "postgres")
-	viper.SetDefault("database.auto_migrate", true)
+	viper.SetDefault("database.auto_migrate", false)
 	viper.SetDefault("database.log_queries", false)
 
 	// Cache defaults

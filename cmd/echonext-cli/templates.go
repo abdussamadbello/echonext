@@ -111,3 +111,12 @@ func (g *ProjectGenerator) generateAtlasSum() string {
 	}
 	return content
 }
+
+// generateEnvExample creates the .env.example file
+func (g *ProjectGenerator) generateEnvExample() string {
+	content, err := g.templateGenerator.GenerateEnvExample()
+	if err != nil {
+		log.Fatalf("Failed to generate .env.example: %v", err)
+	}
+	return content
+}

@@ -4,31 +4,56 @@ import (
 	"fmt"
 	"log"
 
+	"gorm.io/gorm"
+
 	"{{ .Module }}/domain/user"
 	"{{ .Module }}/internal/config"
 	"{{ .Module }}/internal/database"
 	"{{ .Module }}/internal/server"
 )
 
+const banner = `
+   ______      __          _   __          __
+  / ____/_____/ /_  ____  / | / /__  _  __/ /_
+ / __/ / ___/ __ \/ __ \/  |/ / _ \| |/_/ __/
+/ /___/ /__/ / / / /_/ / /|  /  __/>  </ /_
+\____/\___/_/ /_/\____/_/ |_/\___/_/|_|\__/
+
+`
+
 func main() {
+	// Print banner
+	fmt.Print(banner)
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Connect to database
-	db, err := database.Connect(cfg.Database)
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
-	}
-
-	// Create server
+	// Create server first (so health check and docs work without DB)
 	app := server.New(cfg)
 
-	// Register domains
-	userHandler := user.NewHandler(user.NewService(user.NewRepository(db)))
-	userHandler.RegisterRoutes(app)
+	// Connect to database (optional - app can start without it)
+	var db *gorm.DB
+	if cfg.Database.DSN != "" {
+		db, err = database.Connect(cfg.Database)
+		if err != nil {
+			log.Printf("⚠️  Database connection failed: %v", err)
+			log.Println("   API will start but database-dependent routes will fail")
+			log.Println("   Set DATABASE_URL or start the database and restart the server")
+		} else {
+			log.Println("✅ Database connected successfully")
+		}
+	} else {
+		log.Println("ℹ️  No database DSN configured, skipping database connection")
+	}
+
+	// Register domains (handlers will check for nil db)
+	if db != nil {
+		userHandler := user.NewHandler(user.NewService(user.NewRepository(db)))
+		userHandler.RegisterRoutes(app)
+	}
 
 	// Start server
 	log.Printf("🚀 API server starting on port %d", cfg.App.Port)

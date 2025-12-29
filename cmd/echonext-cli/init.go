@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/abdussamadbello/echonext/cmd/echonext-cli/generator"
@@ -187,6 +188,7 @@ func (g *ProjectGenerator) generateStandardProject() error {
 		"infrastructure/Dockerfile.api":     g.generateDockerfileAPI(),
 		"infrastructure/Dockerfile.worker":  g.generateDockerfileWorker(),
 		".gitignore":                         g.generateGitignore(),
+		".env.example":                       g.generateEnvExample(),
 		"cmd/api/main.go":                    g.generateAPIMain(),
 		"cmd/worker/main.go":                 g.generateWorkerMain(),
 		"cmd/cli/main.go":                    g.generateCLIMain(),
@@ -213,14 +215,26 @@ func (g *ProjectGenerator) generateStandardProject() error {
 		}
 	}
 
-	fmt.Printf("✅ Project '%s' created successfully!\n\n", g.Name)
+	// Run go mod tidy to resolve dependencies
+	fmt.Println("Running go mod tidy...")
+	modTidyCmd := exec.Command("go", "mod", "tidy")
+	modTidyCmd.Dir = g.Name
+	modTidyCmd.Stdout = os.Stdout
+	modTidyCmd.Stderr = os.Stderr
+	if err := modTidyCmd.Run(); err != nil {
+		fmt.Printf("Warning: go mod tidy failed: %v\n", err)
+		fmt.Println("You may need to run 'go mod tidy' manually.")
+	}
+
+	fmt.Printf("\n✅ Project '%s' created successfully!\n\n", g.Name)
 	fmt.Printf("Next steps:\n")
 	fmt.Printf("  cd %s\n", g.Name)
-	fmt.Printf("  go mod tidy\n")
 	fmt.Printf("  export DATABASE_URL='postgres://user:pass@localhost:5432/%s_dev?sslmode=disable'\n", g.Name)
 	fmt.Printf("  make dev-db      # Start PostgreSQL with Docker\n")
 	fmt.Printf("  make db-migrate  # Run database migrations\n")
 	fmt.Printf("  make run-api     # Start the API server\n\n")
+	fmt.Printf("Or use the dev server with hot-reload:\n")
+	fmt.Printf("  echonext dev     # Start with file watching\n\n")
 	fmt.Printf("Documentation will be available at http://localhost:8080/api/docs\n")
 
 	return nil

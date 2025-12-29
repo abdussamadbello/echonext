@@ -103,9 +103,9 @@ func (s *DevServer) buildAndStart() error {
 
 	fmt.Printf("Building %s...\n", s.target)
 
-	// Determine target path
-	targetPath := filepath.Join(".", "cmd", s.target)
-	if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+	// Determine target path - must use "./" prefix for local paths
+	targetPath := "./" + filepath.Join("cmd", s.target)
+	if _, err := os.Stat(filepath.Join("cmd", s.target)); os.IsNotExist(err) {
 		targetPath = "."
 	}
 

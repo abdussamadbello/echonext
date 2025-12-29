@@ -9,7 +9,8 @@ app:
 database:
   driver: "postgres"
   dsn: "postgres://postgres:password@localhost:5432/{{ .Name }}_dev?sslmode=disable"
-  auto_migrate: true
+  # Set to true to auto-migrate models on startup (requires database to be running)
+  auto_migrate: false
   log_queries: true
 
 cache:

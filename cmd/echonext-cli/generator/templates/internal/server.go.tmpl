@@ -4,10 +4,12 @@ import (
 	"github.com/abdussamadbello/echonext"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+
+	"{{ .Module }}/internal/config"
 )
 
 // New creates a new EchoNext server with middleware
-func New(cfg *Config) *echonext.App {
+func New(cfg *config.Config) *echonext.App {
 	// Create EchoNext app
 	app := echonext.New()
 
@@ -41,17 +43,4 @@ func New(cfg *Config) *echonext.App {
 	app.ServeSwaggerUI("/api/docs", "/api/openapi.json")
 
 	return app
-}
-
-// Config represents server configuration
-type Config struct {
-	App AppConfig
-}
-
-type AppConfig struct {
-	Name        string
-	Version     string
-	Environment string
-	Port        int
-	Debug       bool
 }

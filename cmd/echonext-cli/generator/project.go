@@ -121,3 +121,8 @@ func (g *ProjectGenerator) GenerateInitialMigration() (string, error) {
 func (g *ProjectGenerator) GenerateAtlasSum() (string, error) {
 	return g.engine.Execute("migrations/atlas.sum.tmpl", g.data)
 }
+
+// GenerateEnvExample generates the .env.example file content
+func (g *ProjectGenerator) GenerateEnvExample() (string, error) {
+	return g.engine.Execute("project/env.example.tmpl", g.data)
+}
