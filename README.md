@@ -738,6 +738,7 @@ MIT License - see the [LICENSE](LICENSE) file for details.
 - [x] ✅ Database management commands (`echonext db init/migrate/seed`)
 - [x] ✅ Atlas migration integration for schema management
 - [x] ✅ Complete example projects (Todo, Blog, E-commerce, Microservices)
+- [x] ✅ OpenTelemetry integration (see `pkg/contrib/middleware`)
 
 **v1.4.0:**
 - [x] ✅ Hot reload dev command (`echonext dev`)
@@ -748,8 +749,8 @@ MIT License - see the [LICENSE](LICENSE) file for details.
 - [x] ✅ GraphQL integration
 - [x] ✅ Code generation from OpenAPI spec
 
-**Completed:**
-- [x] ✅ OpenTelemetry integration (see `pkg/contrib/middleware`)
+
+
 
 **Planned:**
 - [ ] Plugin system for custom generators
