@@ -141,9 +141,17 @@ func newUpgradeCmd() *cobra.Command {
 					os.Exit(1)
 				}
 
-				// Write to current location
+				// On Linux/Unix, we can't overwrite a running binary directly
+				// Solution: remove the old binary first (works even if running), then write new one
+				if err := os.Remove(currentExe); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: Could not remove old binary %s: %v\n", currentExe, err)
+					fmt.Fprintf(os.Stderr, "Try with sudo: sudo cp %s %s\n", sourceBinary, currentExe)
+					os.Exit(1)
+				}
+
+				// Write new binary to the location
 				if err := os.WriteFile(currentExe, newBinary, 0755); err != nil {
-					fmt.Fprintf(os.Stderr, "Error: Could not update %s: %v\n", currentExe, err)
+					fmt.Fprintf(os.Stderr, "Error: Could not write new binary to %s: %v\n", currentExe, err)
 					fmt.Fprintf(os.Stderr, "Try with sudo: sudo cp %s %s\n", sourceBinary, currentExe)
 					os.Exit(1)
 				}
