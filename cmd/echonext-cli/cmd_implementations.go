@@ -1138,3 +1138,134 @@ func runGenerateGraphQL(cmd *cobra.Command, args []string) {
 	fmt.Println()
 	fmt.Println("Documentation: https://gqlgen.com/getting-started/")
 }
+
+// runGenerateWebSocket generates WebSocket handler boilerplate
+func runGenerateWebSocket(cmd *cobra.Command, args []string) {
+	name := strings.ToLower(args[0])
+	fmt.Printf("Generating WebSocket handler '%s'...\n", name)
+
+	if !isEchoNextProject() {
+		log.Fatal("Not in an EchoNext project. Run this command from your project root.")
+	}
+
+	module, err := getModuleName()
+	if err != nil {
+		log.Fatalf("Failed to read module name: %v", err)
+	}
+
+	// Create template engine
+	engine, err := generator.NewEngine()
+	if err != nil {
+		log.Fatalf("Failed to create template engine: %v", err)
+	}
+
+	// Template data
+	data := map[string]interface{}{
+		"Module":     module,
+		"Name":       name,
+		"PascalName": toPascalCase(name),
+	}
+
+	// Create directories
+	wsDir := filepath.Join("internal", "ws", name)
+	if err := os.MkdirAll(wsDir, 0755); err != nil {
+		log.Fatalf("Failed to create ws directory: %v", err)
+	}
+
+	// Generate files from templates
+	templates := []struct {
+		template string
+		output   string
+	}{
+		{"websocket/handler.go.tmpl", filepath.Join(wsDir, "handler.go")},
+		{"websocket/hub.go.tmpl", filepath.Join(wsDir, "hub.go")},
+		{"websocket/message.go.tmpl", filepath.Join(wsDir, "message.go")},
+	}
+
+	for _, t := range templates {
+		content, err := engine.Execute(t.template, data)
+		if err != nil {
+			log.Fatalf("Failed to execute template %s: %v", t.template, err)
+		}
+		if err := os.WriteFile(t.output, []byte(content), 0644); err != nil {
+			log.Fatalf("Failed to write %s: %v", t.output, err)
+		}
+		fmt.Printf("  Created %s\n", t.output)
+	}
+
+	fmt.Println()
+	fmt.Println("WebSocket handler generated!")
+	fmt.Println()
+	fmt.Println("Next steps:")
+	fmt.Printf("  1. Review and customize internal/ws/%s/handler.go\n", name)
+	fmt.Println("  2. Register the WebSocket route in your main.go:")
+	fmt.Printf("     import ws%s \"%s/internal/ws/%s\"\n", toPascalCase(name), module, name)
+	fmt.Printf("     app.WS(\"/ws/%s\", ws%s.NewHandler())\n", name, toPascalCase(name))
+	fmt.Println()
+	fmt.Println("Documentation: https://github.com/abdussamadbello/echonext#websocket")
+}
+
+// runGenerateUpload generates file upload handler boilerplate
+func runGenerateUpload(cmd *cobra.Command, args []string) {
+	name := strings.ToLower(args[0])
+	fmt.Printf("Generating upload handler '%s'...\n", name)
+
+	if !isEchoNextProject() {
+		log.Fatal("Not in an EchoNext project. Run this command from your project root.")
+	}
+
+	module, err := getModuleName()
+	if err != nil {
+		log.Fatalf("Failed to read module name: %v", err)
+	}
+
+	// Create template engine
+	engine, err := generator.NewEngine()
+	if err != nil {
+		log.Fatalf("Failed to create template engine: %v", err)
+	}
+
+	// Template data
+	data := map[string]interface{}{
+		"Module":     module,
+		"Name":       name,
+		"PascalName": toPascalCase(name),
+	}
+
+	// Create directories
+	uploadDir := filepath.Join("internal", "upload", name)
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		log.Fatalf("Failed to create upload directory: %v", err)
+	}
+
+	// Generate files from templates
+	templates := []struct {
+		template string
+		output   string
+	}{
+		{"upload/handler.go.tmpl", filepath.Join(uploadDir, "handler.go")},
+		{"upload/dto.go.tmpl", filepath.Join(uploadDir, "dto.go")},
+	}
+
+	for _, t := range templates {
+		content, err := engine.Execute(t.template, data)
+		if err != nil {
+			log.Fatalf("Failed to execute template %s: %v", t.template, err)
+		}
+		if err := os.WriteFile(t.output, []byte(content), 0644); err != nil {
+			log.Fatalf("Failed to write %s: %v", t.output, err)
+		}
+		fmt.Printf("  Created %s\n", t.output)
+	}
+
+	fmt.Println()
+	fmt.Println("Upload handler generated!")
+	fmt.Println()
+	fmt.Println("Next steps:")
+	fmt.Printf("  1. Review and customize internal/upload/%s/handler.go\n", name)
+	fmt.Println("  2. Register the upload route in your main.go:")
+	fmt.Printf("     import upload%s \"%s/internal/upload/%s\"\n", toPascalCase(name), module, name)
+	fmt.Printf("     app.Upload(\"/%s/upload\", upload%s.Handler)\n", name, toPascalCase(name))
+	fmt.Println()
+	fmt.Println("Documentation: https://github.com/abdussamadbello/echonext#file-uploads")
+}

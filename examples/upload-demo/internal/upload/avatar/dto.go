@@ -1,0 +1,43 @@
+package avatar
+
+import "github.com/abdussamadbello/echonext/upload"
+
+// UploadRequest represents a single file upload request
+type UploadRequest struct {
+	File *upload.File `form:"file" validate:"required"`
+	// Add additional form fields as needed
+	// Title       string `form:"title"`
+	// Description string `form:"description"`
+}
+
+// MultiUploadRequest represents a multiple file upload request
+type MultiUploadRequest struct {
+	Files []*upload.File `form:"files" validate:"required,max=10"`
+	// Add additional form fields as needed
+	// Album string `form:"album"`
+}
+
+// UploadResponse represents the response after a successful upload
+type UploadResponse struct {
+	Filename     string `json:"filename"`
+	OriginalName string `json:"original_name"`
+	Size         int64  `json:"size"`
+	ContentType  string `json:"content_type"`
+	URL          string `json:"url"`
+}
+
+// MultiUploadResponse represents the response after multiple file uploads
+type MultiUploadResponse struct {
+	Files   []FileInfo `json:"files"`
+	Count   int        `json:"count"`
+	Message string     `json:"message"`
+}
+
+// FileInfo contains information about an uploaded file
+type FileInfo struct {
+	Filename     string `json:"filename"`
+	OriginalName string `json:"original_name"`
+	Size         int64  `json:"size"`
+	ContentType  string `json:"content_type"`
+	URL          string `json:"url"`
+}

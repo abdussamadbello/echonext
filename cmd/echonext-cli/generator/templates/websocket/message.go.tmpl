@@ -1,0 +1,48 @@
+package {{ .Name }}
+
+import "time"
+
+// Message types for {{ .Name }} WebSocket
+const (
+	MessageTypeMessage = "message"
+	MessageTypeSystem  = "system"
+	MessageTypeError   = "error"
+	MessageTypeJoin    = "join"
+	MessageTypeLeave   = "leave"
+)
+
+// Message represents an outgoing WebSocket message
+type Message struct {
+	Type      string      `json:"type"`
+	Payload   interface{} `json:"payload"`
+	Sender    string      `json:"sender,omitempty"`
+	Timestamp time.Time   `json:"timestamp"`
+}
+
+// IncomingMessage represents an incoming WebSocket message from clients
+type IncomingMessage struct {
+	Type    string `json:"type"`
+	Content string `json:"content"`
+	// Add more fields as needed for your use case
+	// Target  string `json:"target,omitempty"`  // For direct messages
+	// Room    string `json:"room,omitempty"`    // For room-based messaging
+}
+
+// NewMessage creates a new message with the current timestamp
+func NewMessage(msgType string, payload interface{}) Message {
+	return Message{
+		Type:      msgType,
+		Payload:   payload,
+		Timestamp: time.Now(),
+	}
+}
+
+// NewSystemMessage creates a system message
+func NewSystemMessage(payload string) Message {
+	return NewMessage(MessageTypeSystem, payload)
+}
+
+// NewErrorMessage creates an error message
+func NewErrorMessage(err string) Message {
+	return NewMessage(MessageTypeError, err)
+}

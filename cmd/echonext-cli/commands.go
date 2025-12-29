@@ -23,13 +23,17 @@ Available generators:
   otel        - OpenTelemetry instrumentation setup
   openapi     - Generate code from OpenAPI specification
   graphql     - Generate GraphQL boilerplate with gqlgen
+  websocket   - Generate WebSocket handler boilerplate
+  upload      - Generate file upload handler boilerplate
 
 Examples:
   echonext generate domain user
   echonext generate handler product
   echonext generate otel
   echonext generate openapi api.yaml
-  echonext generate graphql`,
+  echonext generate graphql
+  echonext generate websocket chat
+  echonext generate upload avatar`,
 		Aliases: []string{"gen", "g"},
 	}
 
@@ -44,6 +48,8 @@ Examples:
 		newGenerateOtelCmd(),
 		newGenerateOpenAPICmd(),
 		newGenerateGraphQLCmd(),
+		newGenerateWebSocketCmd(),
+		newGenerateUploadCmd(),
 	)
 
 	return cmd
@@ -352,6 +358,60 @@ The generated code integrates with EchoNext's GraphQL support:
       }),
   })`,
 		Run: runGenerateGraphQL,
+	}
+}
+
+func newGenerateWebSocketCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "websocket [name]",
+		Short: "Generate WebSocket handler boilerplate",
+		Long: `Generate WebSocket handler boilerplate for real-time communication.
+
+Creates:
+  - internal/ws/<name>/handler.go   - WebSocket handler implementation
+  - internal/ws/<name>/hub.go       - Connection hub for broadcasting
+  - internal/ws/<name>/message.go   - Message types and serialization
+
+After generation:
+  1. Review and customize the handler logic
+  2. Register the WebSocket route in your main.go:
+     app.WS("/ws/<name>", ws<Name>.NewHandler())
+
+Example:
+  echonext generate websocket chat
+  echonext generate websocket notifications
+
+The generated code uses EchoNext's WebSocket support for type-safe messaging.`,
+		Args: cobra.ExactArgs(1),
+		Run:  runGenerateWebSocket,
+	}
+}
+
+func newGenerateUploadCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "upload [name]",
+		Short: "Generate file upload handler boilerplate",
+		Long: `Generate file upload handler boilerplate with validation.
+
+Creates:
+  - internal/upload/<name>/handler.go - Upload handler implementation
+  - internal/upload/<name>/dto.go     - Request/Response DTOs
+
+After generation:
+  1. Review and customize the upload logic
+  2. Register the upload route in your main.go:
+     app.Upload("/<name>/upload", upload<Name>.Handler)
+
+Example:
+  echonext generate upload avatar
+  echonext generate upload document
+
+The generated code uses EchoNext's Upload support with:
+  - File size validation
+  - MIME type checking
+  - Automatic OpenAPI documentation`,
+		Args: cobra.ExactArgs(1),
+		Run:  runGenerateUpload,
 	}
 }
 

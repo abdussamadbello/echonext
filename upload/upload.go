@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -74,6 +75,28 @@ func (f *File) Close() error {
 // Extension returns the file extension (with dot)
 func (f *File) Extension() string {
 	return filepath.Ext(f.Filename)
+}
+
+// SaveTo saves the file to the specified path
+func (f *File) SaveTo(destPath string) error {
+	// Ensure parent directory exists
+	dir := filepath.Dir(destPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	// Read file content
+	data, err := f.Read()
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+
+	// Write to destination
+	if err := os.WriteFile(destPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+
+	return nil
 }
 
 // Config configures file upload handling

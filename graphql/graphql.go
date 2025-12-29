@@ -13,6 +13,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 // GraphQL configuration defaults
@@ -166,14 +167,14 @@ func Handler(config Config) *handler.Server {
 	}
 
 	// Configure query cache
-	srv.SetQueryCache(lru.New(config.QueryCacheSize))
+	srv.SetQueryCache(lru.New[*ast.QueryDocument](config.QueryCacheSize))
 
 	// Configure extensions
 	if config.EnableIntrospection {
 		srv.Use(extension.Introspection{})
 	}
 	srv.Use(extension.AutomaticPersistedQuery{
-		Cache: lru.New(100),
+		Cache: lru.New[string](100),
 	})
 
 	// Add complexity limit

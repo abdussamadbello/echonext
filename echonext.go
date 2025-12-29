@@ -11,6 +11,7 @@ import (
 
 	"github.com/abdussamadbello/echonext/graphql"
 	"github.com/abdussamadbello/echonext/upload"
+	"github.com/abdussamadbello/echonext/websocket"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -44,6 +45,7 @@ type RouteInfo struct {
 	ResponseType reflect.Type
 	RouteConfig  *Route // Store the full route configuration
 	IsUpload     bool   // Indicates if this is a file upload endpoint
+	IsWebSocket  bool   // Indicates if this is a WebSocket endpoint
 }
 
 // Route configures route metadata for OpenAPI generation
@@ -406,6 +408,12 @@ func (app *App) Upload(path string, handler interface{}, opts ...Route) {
 	app.registerUploadRoute(path, handler, opts...)
 }
 
+// WS registers a WebSocket endpoint
+// The handler should implement websocket.Handler interface or be a typed handler function
+func (app *App) WS(path string, handler interface{}, opts ...Route) {
+	app.registerWSRoute(path, handler, opts...)
+}
+
 // Group creates a route group with the given prefix
 func (app *App) Group(prefix string, middleware ...echo.MiddlewareFunc) *Group {
 	echoGroup := app.Echo.Group(prefix, middleware...)
@@ -663,6 +671,49 @@ func (g *Group) registerGroupUploadRoute(fullPath, relativePath string, handler 
 	// Create Echo handler with file upload support and register on group
 	echoHandler := g.app.createUploadEchoHandler(handler, requestType, responseType, routeInfo.RouteConfig)
 	g.echoGroup.POST(relativePath, echoHandler)
+}
+
+// registerWSRoute registers a WebSocket route
+func (app *App) registerWSRoute(path string, handler interface{}, opts ...Route) {
+	// Store route info for OpenAPI generation
+	routeInfo := RouteInfo{
+		Method:      "GET",
+		Path:        path,
+		Handler:     handler,
+		IsWebSocket: true,
+	}
+
+	if len(opts) > 0 {
+		route := opts[0]
+		routeInfo.Summary = route.Summary
+		routeInfo.Description = route.Description
+		routeInfo.Tags = route.Tags
+	}
+
+	app.routes = append(app.routes, routeInfo)
+
+	// Create WebSocket Echo handler
+	config := websocket.DefaultConfig()
+	echoHandler := func(c echo.Context) error {
+		upgrader := websocket.CreateUpgrader(&config)
+		ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+		if err != nil {
+			return err
+		}
+
+		conn := websocket.NewConnection(websocket.GenerateConnectionID(), ws, c)
+		websocket.SetupConnection(conn, &config)
+
+		// Check if handler implements websocket.Handler interface
+		if h, ok := handler.(websocket.Handler); ok {
+			return websocket.HandleHandler(conn, h, &config)
+		}
+
+		// For function handlers
+		return websocket.HandleTypedHandler(conn, handler, &config)
+	}
+
+	app.Echo.GET(path, echoHandler)
 }
 
 // createUploadEchoHandler wraps file upload handlers for Echo
