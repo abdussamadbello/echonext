@@ -8,7 +8,7 @@ EchoNext provides type-safe file upload support with automatic OpenAPI documenta
 import (
     "github.com/abdussamadbello/echonext"
     "github.com/abdussamadbello/echonext/upload"
-    "github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v5"
 )
 
 type AvatarRequest struct {

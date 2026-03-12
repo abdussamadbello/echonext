@@ -121,7 +121,7 @@
 //	import (
 //	    "github.com/abdussamadbello/echonext"
 //	    "github.com/abdussamadbello/echonext/pkg/contrib/middleware"
-//	    echomw "github.com/labstack/echo/v4/middleware"
+//	    echomw "github.com/labstack/echo/v5/middleware"
 //	)
 //
 //	app := echonext.New()

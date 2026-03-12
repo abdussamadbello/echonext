@@ -28,7 +28,7 @@ package main
 
 import (
     "github.com/abdussamadbello/echonext"
-    "github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v5"
 )
 
 // Define your request/response types
@@ -156,7 +156,7 @@ func getUser(c echo.Context) (UserResponse, error) {
 EchoNext is fully compatible with all Echo middleware and features. Since it wraps `*echo.Echo`, you have access to everything Echo provides:
 
 ```go
-import "github.com/labstack/echo/v4/middleware"
+import "github.com/labstack/echo/v5/middleware"
 
 app := echonext.New()
 

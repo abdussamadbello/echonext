@@ -241,7 +241,7 @@ package user
 
 import (
     "github.com/abdussamadbello/echonext"
-    "github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v5"
     "strconv"
 )
 
@@ -625,7 +625,7 @@ func (s *Service) List(req PaginatedRequest) (PaginatedResponse, error) {
 ```go
 import (
     "github.com/golang-jwt/jwt/v5"
-    "github.com/labstack/echo/v4/middleware"
+    "github.com/labstack/echo/v5/middleware"
 )
 
 // Add JWT middleware

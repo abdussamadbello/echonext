@@ -7,7 +7,7 @@ toolchain go1.24.11
 require (
 	github.com/99designs/gqlgen v0.17.85
 	github.com/abdussamadbello/echonext v0.0.0
-	github.com/labstack/echo/v4 v4.13.4
+	github.com/labstack/echo/v5 v5.0.0
 	github.com/vektah/gqlparser/v2 v2.5.31
 )
 

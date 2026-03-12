@@ -790,7 +790,7 @@ func (g *OpenAPIGenerator) generateHandlersInline(endpoints []EndpointInfo) stri
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("package %s\n\n", g.PackageName))
 	sb.WriteString("import (\n")
-	sb.WriteString("\t\"github.com/labstack/echo/v4\"\n")
+	sb.WriteString("\t\"github.com/labstack/echo/v5\"\n")
 	sb.WriteString(")\n\n")
 
 	for _, ep := range endpoints {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/abdussamadbello/echonext"
 	uploadAvatar "github.com/abdussamadbello/echonext/examples/upload-demo/internal/upload/avatar"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 func main() {

@@ -11,8 +11,8 @@ import (
 
 	"github.com/abdussamadbello/echonext"
 	contribmw "github.com/abdussamadbello/echonext/pkg/contrib/middleware"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 )
 
 // Domain models
