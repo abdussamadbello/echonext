@@ -260,7 +260,7 @@ echo.NewHTTPError(500, "internal server error")
 EchoNext is fully compatible with Echo middleware:
 
 ```go
-import "github.com/labstack/echo/v4/middleware"
+import "github.com/labstack/echo/v5/middleware"
 
 app := echonext.New()
 

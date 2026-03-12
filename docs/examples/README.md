@@ -395,7 +395,7 @@ package user
 
 import (
     "github.com/abdussamadbello/echonext"
-    "github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v5"
 )
 
 type Handler struct {

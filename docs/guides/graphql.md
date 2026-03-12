@@ -163,7 +163,7 @@ Use Echo middleware for authentication:
 
 ```go
 import (
-    "github.com/labstack/echo/v4/middleware"
+    "github.com/labstack/echo/v5/middleware"
 )
 
 func main() {

@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/abdussamadbello/echonext v0.0.0
-	github.com/labstack/echo/v4 v4.13.4
+	github.com/labstack/echo/v5 v5.0.0
 )
 
 require (

@@ -232,7 +232,7 @@ Access to XMLHttpRequest has been blocked by CORS policy
 **Solution:**
 
 ```go
-import "github.com/labstack/echo/v4/middleware"
+import "github.com/labstack/echo/v5/middleware"
 
 app := echonext.New()
 
@@ -541,7 +541,7 @@ func handler(c echo.Context) error {
 ### Enable Debug Logging
 
 ```go
-import "github.com/labstack/echo/v4/middleware"
+import "github.com/labstack/echo/v5/middleware"
 
 app := echonext.New()
 app.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{

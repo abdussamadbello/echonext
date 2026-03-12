@@ -25,7 +25,7 @@ Yes! EchoNext is built on top of the mature and battle-tested Echo framework. It
 Yes, absolutely! EchoNext is fully compatible with all Echo middleware:
 
 ```go
-import "github.com/labstack/echo/v4/middleware"
+import "github.com/labstack/echo/v5/middleware"
 
 app := echonext.New()
 app.Use(middleware.Logger())
@@ -388,7 +388,7 @@ Make sure you:
 Use Echo's CORS middleware:
 
 ```go
-import "github.com/labstack/echo/v4/middleware"
+import "github.com/labstack/echo/v5/middleware"
 
 app.Use(middleware.CORS())
 ```

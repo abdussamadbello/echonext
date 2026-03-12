@@ -514,7 +514,7 @@ BenchmarkEchoNext       95000    10789 ns/op  (~5% overhead)
 
 | Package | Purpose |
 |---------|---------|
-| `github.com/labstack/echo/v4` | Web framework |
+| `github.com/labstack/echo/v5` | Web framework |
 | `github.com/getkin/kin-openapi` | OpenAPI spec generation |
 | `github.com/go-playground/validator/v10` | Validation |
 

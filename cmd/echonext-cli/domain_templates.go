@@ -254,7 +254,7 @@ import (
 	"strconv"
 
 	"github.com/abdussamadbello/echonext"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 // Handler handles HTTP requests for users

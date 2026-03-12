@@ -28,7 +28,7 @@ package main
 
 import (
     "github.com/abdussamadbello/echonext"
-    "github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v5"
 )
 
 // Define your data types
@@ -307,7 +307,7 @@ Now that you've built your first API:
 ### Adding Middleware
 
 ```go
-import "github.com/labstack/echo/v4/middleware"
+import "github.com/labstack/echo/v5/middleware"
 
 app := echonext.New()
 
@@ -374,7 +374,7 @@ Make sure to import:
 ```go
 import (
     "github.com/abdussamadbello/echonext"
-    "github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v5"
 )
 ```
 

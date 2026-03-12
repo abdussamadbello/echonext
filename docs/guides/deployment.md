@@ -460,7 +460,7 @@ app.StartTLS(":443", "cert.pem", "key.pem")
 ### 2. Set Security Headers
 
 ```go
-import "github.com/labstack/echo/v4/middleware"
+import "github.com/labstack/echo/v5/middleware"
 
 app.Use(middleware.SecureWithConfig(middleware.SecureConfig{
     XSSProtection:         "1; mode=block",

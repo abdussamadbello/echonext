@@ -150,7 +150,7 @@ func (r *queryResolver) Me(ctx context.Context) (*User, error) {
 
 ```go
 import (
-    "github.com/labstack/echo/v4/middleware"
+    "github.com/labstack/echo/v5/middleware"
 )
 
 // Add JWT middleware before GraphQL

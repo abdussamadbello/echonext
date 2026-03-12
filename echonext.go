@@ -14,7 +14,7 @@ import (
 	"github.com/abdussamadbello/echonext/websocket"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-playground/validator/v10"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 // App represents an EchoNext application
