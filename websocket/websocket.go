@@ -54,7 +54,7 @@ type Connection struct {
 	// conn is the underlying WebSocket connection
 	conn *websocket.Conn
 	// context is the Echo context
-	context echo.Context
+	context *echo.Context
 	// metadata stores custom data associated with the connection
 	metadata map[string]interface{}
 	// mu protects metadata
@@ -286,7 +286,7 @@ func (c *Connection) Close() error {
 }
 
 // Context returns the Echo context
-func (c *Connection) Context() echo.Context {
+func (c *Connection) Context() *echo.Context {
 	return c.context
 }
 
@@ -332,7 +332,7 @@ func GenerateConnectionID() string {
 }
 
 // NewConnection creates a new WebSocket connection wrapper
-func NewConnection(id string, ws *websocket.Conn, ctx echo.Context) *Connection {
+func NewConnection(id string, ws *websocket.Conn, ctx *echo.Context) *Connection {
 	return &Connection{
 		ID:       id,
 		conn:     ws,

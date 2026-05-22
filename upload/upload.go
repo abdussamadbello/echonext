@@ -147,7 +147,7 @@ func DefaultConfig() Config {
 }
 
 // Bind binds multipart form data to a request struct containing File fields
-func Bind(c echo.Context, req interface{}, config *Config) error {
+func Bind(c *echo.Context, req interface{}, config *Config) error {
 	if config == nil {
 		defaultConfig := DefaultConfig()
 		config = &defaultConfig
@@ -382,7 +382,7 @@ func IsFileSliceType(t reflect.Type) bool {
 }
 
 // bindFormField binds a non-file form field
-func bindFormField(c echo.Context, fieldValue reflect.Value, formTag string) error {
+func bindFormField(c *echo.Context, fieldValue reflect.Value, formTag string) error {
 	formValue := c.FormValue(formTag)
 	if formValue == "" {
 		return nil
@@ -421,7 +421,7 @@ func bindFormField(c echo.Context, fieldValue reflect.Value, formTag string) err
 }
 
 // IsMultipartRequest checks if the request is multipart/form-data
-func IsMultipartRequest(c echo.Context) bool {
+func IsMultipartRequest(c *echo.Context) bool {
 	contentType := c.Request().Header.Get("Content-Type")
 	return strings.HasPrefix(contentType, "multipart/form-data")
 }

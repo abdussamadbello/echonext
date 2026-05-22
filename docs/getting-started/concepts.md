@@ -35,7 +35,7 @@ app.Group("/api/v1")           // Echo route groups
 Traditional Echo handlers:
 
 ```go
-func handler(c echo.Context) error {
+func handler(c *echo.Context) error {
     // Manual parsing, binding, validation
     var req Request
     if err := c.Bind(&req); err != nil {
@@ -56,7 +56,7 @@ func handler(c echo.Context) error {
 EchoNext handlers:
 
 ```go
-func handler(c echo.Context, req Request) (Response, error) {
+func handler(c *echo.Context, req Request) (Response, error) {
     // Request is already parsed and validated!
     result := process(req)
     return result, nil  // Response is automatically serialized
@@ -69,17 +69,17 @@ EchoNext supports multiple handler signatures:
 
 ```go
 // No request body (GET, DELETE)
-func handler(c echo.Context) (Response, error)
+func handler(c *echo.Context) (Response, error)
 
 // With request body (POST, PUT, PATCH)
-func handler(c echo.Context, req Request) (Response, error)
+func handler(c *echo.Context, req Request) (Response, error)
 
 // No response body
-func handler(c echo.Context) error
-func handler(c echo.Context, req Request) error
+func handler(c *echo.Context) error
+func handler(c *echo.Context, req Request) error
 
 // Access to Echo context is always available
-func handler(c echo.Context, req Request) (Response, error) {
+func handler(c *echo.Context, req Request) (Response, error) {
     userId := c.Param("id")        // Path parameters
     token := c.Request().Header.Get("Authorization")  // Headers
     // ...
@@ -230,7 +230,7 @@ app.ServeSwaggerUI("/api/docs", "/api/openapi.json")
 Return errors from handlers:
 
 ```go
-func getUser(c echo.Context) (UserResponse, error) {
+func getUser(c *echo.Context) (UserResponse, error) {
     id := c.Param("id")
     
     user, err := db.FindUser(id)
@@ -273,7 +273,7 @@ app.Use(middleware.Gzip())
 // Route-specific middleware
 app.GET("/admin", adminHandler, echonext.Route{
     Summary: "Admin endpoint",
-}, middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
+}, middleware.BasicAuth(func(username, password string, c *echo.Context) (bool, error) {
     return username == "admin" && password == "secret", nil
 }))
 ```
@@ -320,14 +320,14 @@ type Request struct {
 }
 
 // ✅ Correct
-func handler(c echo.Context, req Request) (Response, error) {
+func handler(c *echo.Context, req Request) (Response, error) {
     name := req.Name  // Type-safe access
     age := req.Age    // No type assertions needed
     return Response{}, nil
 }
 
 // ❌ Won't compile - wrong type
-func handler(c echo.Context, req string) (Response, error) {
+func handler(c *echo.Context, req string) (Response, error) {
     // Compiler catches this mistake!
 }
 ```
@@ -351,7 +351,7 @@ type Request struct {
 }
 
 // Compiler shows all places that need updating
-func handler(c echo.Context, req Request) (Response, error) {
+func handler(c *echo.Context, req Request) (Response, error) {
     name := req.UserName  // IDE suggests the new name
 }
 ```
@@ -370,7 +370,7 @@ app.File("/favicon.ico", "public/favicon.ico")
 
 // ✅ Mix EchoNext and standard Echo handlers
 app.GET("/typed", typedHandler, echonext.Route{...})
-app.GET("/standard", func(c echo.Context) error {
+app.GET("/standard", func(c *echo.Context) error {
     return c.String(200, "Standard Echo handler")
 })
 
@@ -378,7 +378,7 @@ app.GET("/standard", func(c echo.Context) error {
 echoInstance := app.Echo  // *echo.Echo
 
 // ✅ Use Echo context in handlers
-func handler(c echo.Context, req Request) (Response, error) {
+func handler(c *echo.Context, req Request) (Response, error) {
     // All Echo context methods available
     c.Param("id")
     c.QueryParam("filter")
@@ -448,7 +448,7 @@ app.DELETE("/users/:id", deleteUser, echonext.Route{
 ### 5. Handle Errors Gracefully
 
 ```go
-func handler(c echo.Context, req Request) (Response, error) {
+func handler(c *echo.Context, req Request) (Response, error) {
     result, err := service.Process(req)
     if err != nil {
         // Return appropriate HTTP error

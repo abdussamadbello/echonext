@@ -529,7 +529,7 @@ app.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
 ### Health Check Endpoint
 
 ```go
-app.GET("/health", func(c echo.Context) error {
+app.GET("/health", func(c *echo.Context) error {
     // Check database
     if err := db.Ping(); err != nil {
         return c.JSON(503, map[string]string{
@@ -586,7 +586,7 @@ rdb := redis.NewClient(&redis.Options{
 })
 
 // Cache handler responses
-func getCachedUser(c echo.Context) error {
+func getCachedUser(c *echo.Context) error {
     id := c.Param("id")
     
     // Try cache first

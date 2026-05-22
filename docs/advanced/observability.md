@@ -155,7 +155,7 @@ app.Use(middleware.OTELMiddleware("my-service"))
 Add timeline markers within a trace:
 
 ```go
-func createOrder(c echo.Context, req CreateOrderRequest) (OrderResponse, error) {
+func createOrder(c *echo.Context, req CreateOrderRequest) (OrderResponse, error) {
     // Add event to current span
     middleware.AddSpanEvent(c, "validating order")
     
@@ -184,7 +184,7 @@ func createOrder(c echo.Context, req CreateOrderRequest) (OrderResponse, error) 
 Capture errors in traces for debugging:
 
 ```go
-func getUser(c echo.Context) (UserResponse, error) {
+func getUser(c *echo.Context) (UserResponse, error) {
     id := c.Param("id")
     
     user, err := service.GetByID(id)
@@ -203,7 +203,7 @@ func getUser(c echo.Context) (UserResponse, error) {
 Access trace information in handlers:
 
 ```go
-func handler(c echo.Context) error {
+func handler(c *echo.Context) error {
     traceID := middleware.GetTraceID(c)
     spanID := middleware.GetSpanID(c)
     requestID := middleware.GetRequestID(c)
@@ -231,7 +231,7 @@ app.Use(middleware.OTELMiddleware("my-service",
 ))
 
 // In handlers, add dynamic attributes
-func handler(c echo.Context) error {
+func handler(c *echo.Context) error {
     middleware.AddSpanEvent(c, "processing",
         attribute.String("user_id", getUserID(c)),
         attribute.String("tenant", getTenant(c)),
@@ -252,7 +252,7 @@ tracedClient := middleware.NewTracedHTTPClient(
     middleware.WithClientTimeout(30 * time.Second),
 )
 
-func handler(c echo.Context) error {
+func handler(c *echo.Context) error {
     // Get context from incoming request
     ctx := c.Request().Context()
     
@@ -273,7 +273,7 @@ func handler(c echo.Context) error {
 ### Making POST Requests
 
 ```go
-func callExternalAPI(c echo.Context, data interface{}) error {
+func callExternalAPI(c *echo.Context, data interface{}) error {
     ctx := c.Request().Context()
     
     // Marshal data
@@ -374,7 +374,7 @@ func init() {
     prometheus.MustRegister(orderValue)
 }
 
-func createOrder(c echo.Context, req CreateOrderRequest) (OrderResponse, error) {
+func createOrder(c *echo.Context, req CreateOrderRequest) (OrderResponse, error) {
     order, err := service.Create(req)
     if err != nil {
         return OrderResponse{}, err
@@ -414,7 +414,7 @@ Include trace IDs in logs:
 ```go
 import "github.com/labstack/gommon/log"
 
-func handler(c echo.Context) error {
+func handler(c *echo.Context) error {
     traceID := middleware.GetTraceID(c)
     requestID := middleware.GetRequestID(c)
     
@@ -435,7 +435,7 @@ Use the structured logger middleware:
 
 ```go
 app.Use(middleware.StructuredLogger(middleware.StructuredLoggerConfig{
-    CustomFields: func(c echo.Context) map[string]interface{} {
+    CustomFields: func(c *echo.Context) map[string]interface{} {
         return map[string]interface{}{
             "trace_id":   middleware.GetTraceID(c),
             "request_id": middleware.GetRequestID(c),
@@ -459,7 +459,7 @@ type LogEntry struct {
     Extra     map[string]interface{} `json:"extra,omitempty"`
 }
 
-func logJSON(c echo.Context, level, message string, extra map[string]interface{}) {
+func logJSON(c *echo.Context, level, message string, extra map[string]interface{}) {
     entry := LogEntry{
         Timestamp: time.Now().UTC().Format(time.RFC3339),
         Level:     level,
@@ -516,7 +516,7 @@ Don't trace health check endpoints:
 
 ```go
 app.Use(middleware.OTELMiddleware("my-service",
-    middleware.WithSkipper(func(c echo.Context) bool {
+    middleware.WithSkipper(func(c *echo.Context) bool {
         return c.Path() == "/health" || c.Path() == "/ready"
     }),
 ))

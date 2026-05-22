@@ -96,8 +96,8 @@ func DefaultConfig(schema graphql.ExecutableSchema) Config {
 
 // GetEchoContext retrieves the Echo context from a GraphQL resolver context
 // Returns nil if not found
-func GetEchoContext(ctx context.Context) echo.Context {
-	if c, ok := ctx.Value(EchoContextKey).(echo.Context); ok {
+func GetEchoContext(ctx context.Context) *echo.Context {
+	if c, ok := ctx.Value(EchoContextKey).(*echo.Context); ok {
 		return c
 	}
 	return nil
@@ -105,7 +105,7 @@ func GetEchoContext(ctx context.Context) echo.Context {
 
 // MustGetEchoContext retrieves the Echo context from a GraphQL resolver context
 // Panics if not found
-func MustGetEchoContext(ctx context.Context) echo.Context {
+func MustGetEchoContext(ctx context.Context) *echo.Context {
 	c := GetEchoContext(ctx)
 	if c == nil {
 		panic("echo.Context not found in GraphQL context")
@@ -217,7 +217,7 @@ func PlaygroundHandler(title, graphqlPath string) http.Handler {
 
 // WrapWithEchoContext creates an Echo handler that injects context into GraphQL requests
 func WrapWithEchoContext(srv *handler.Server) echo.HandlerFunc {
-	return func(c echo.Context) error {
+	return func(c *echo.Context) error {
 		// Add Echo context to GraphQL context
 		ctx := context.WithValue(c.Request().Context(), EchoContextKey, c)
 		c.SetRequest(c.Request().WithContext(ctx))

@@ -19,7 +19,7 @@ func TestRequestID(t *testing.T) {
 	e := echo.New()
 	e.Use(RequestID())
 
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/test", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
 
@@ -41,7 +41,7 @@ func TestRequestIDPreserveExisting(t *testing.T) {
 
 	existingID := "existing-request-id-12345"
 
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/test", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
 
@@ -60,16 +60,16 @@ func TestRequestIDPreserveExisting(t *testing.T) {
 func TestRequestIDWithSkipper(t *testing.T) {
 	e := echo.New()
 	e.Use(RequestIDWithConfig(RequestIDConfig{
-		Skipper: func(c echo.Context) bool {
+		Skipper: func(c *echo.Context) bool {
 			return c.Request().URL.Path == "/skip"
 		},
 	}))
 
-	e.GET("/skip", func(c echo.Context) error {
+	e.GET("/skip", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "skipped")
 	})
 
-	e.GET("/noskip", func(c echo.Context) error {
+	e.GET("/noskip", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "not skipped")
 	})
 
@@ -94,7 +94,7 @@ func TestRequestIDCustomGenerator(t *testing.T) {
 		Generator: func() string { return customID },
 	}))
 
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/test", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
 
@@ -115,7 +115,7 @@ func TestRequestIDCustomHeader(t *testing.T) {
 		RequestIDHeader: customHeader,
 	}))
 
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/test", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
 
@@ -136,7 +136,7 @@ func TestGetRequestID(t *testing.T) {
 
 	var retrievedID string
 	e.Use(RequestID())
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/test", func(c *echo.Context) error {
 		retrievedID = GetRequestID(c)
 		return c.String(http.StatusOK, "OK")
 	})
@@ -155,7 +155,7 @@ func TestGetRequestIDEmpty(t *testing.T) {
 
 	var retrievedID string
 	// Don't use RequestID middleware
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/test", func(c *echo.Context) error {
 		retrievedID = GetRequestID(c)
 		return c.String(http.StatusOK, "OK")
 	})
@@ -267,11 +267,11 @@ func TestMetricsMiddleware(t *testing.T) {
 
 	e.Use(MetricsMiddleware(m))
 
-	e.GET("/ok", func(c echo.Context) error {
+	e.GET("/ok", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
 
-	e.GET("/error", func(c echo.Context) error {
+	e.GET("/error", func(c *echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Error")
 	})
 
@@ -317,7 +317,7 @@ func TestStructuredLogger(t *testing.T) {
 
 	e.Use(StructuredLogger(StructuredLoggerConfig{}))
 
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/test", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
 
@@ -335,13 +335,13 @@ func TestStructuredLoggerWithSkipper(t *testing.T) {
 
 	skipped := false
 	e.Use(StructuredLogger(StructuredLoggerConfig{
-		Skipper: func(c echo.Context) bool {
+		Skipper: func(c *echo.Context) bool {
 			skipped = c.Request().URL.Path == "/skip"
 			return skipped
 		},
 	}))
 
-	e.GET("/skip", func(c echo.Context) error {
+	e.GET("/skip", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "skipped")
 	})
 
@@ -358,7 +358,7 @@ func TestStructuredLoggerWithCustomFields(t *testing.T) {
 
 	customFieldsCalled := false
 	e.Use(StructuredLogger(StructuredLoggerConfig{
-		CustomFields: func(c echo.Context) map[string]interface{} {
+		CustomFields: func(c *echo.Context) map[string]interface{} {
 			customFieldsCalled = true
 			return map[string]interface{}{
 				"custom_field": "custom_value",
@@ -366,7 +366,7 @@ func TestStructuredLoggerWithCustomFields(t *testing.T) {
 		},
 	}))
 
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/test", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
 
@@ -385,7 +385,7 @@ func TestStructuredLoggerWithRequestID(t *testing.T) {
 	e.Use(RequestID())
 	e.Use(StructuredLogger(StructuredLoggerConfig{}))
 
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/test", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
 

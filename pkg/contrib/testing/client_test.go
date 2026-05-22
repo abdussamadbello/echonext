@@ -30,14 +30,14 @@ func setupTestApp() *echonext.App {
 	app := echonext.New()
 
 	// GET endpoint
-	app.GET("/users", func(c echo.Context) ([]TestUser, error) {
+	app.GET("/users", func(c *echo.Context) ([]TestUser, error) {
 		return []TestUser{
 			{ID: "1", Name: "John", Email: "john@example.com"},
 		}, nil
 	})
 
 	// POST endpoint
-	app.POST("/users", func(c echo.Context, req CreateUserRequest) (TestUser, error) {
+	app.POST("/users", func(c *echo.Context, req CreateUserRequest) (TestUser, error) {
 		return TestUser{
 			ID:    "2",
 			Name:  req.Name,
@@ -46,7 +46,7 @@ func setupTestApp() *echonext.App {
 	})
 
 	// PUT endpoint
-	app.PUT("/users/:id", func(c echo.Context, req CreateUserRequest) (TestUser, error) {
+	app.PUT("/users/:id", func(c *echo.Context, req CreateUserRequest) (TestUser, error) {
 		return TestUser{
 			ID:    c.Param("id"),
 			Name:  req.Name,
@@ -55,18 +55,18 @@ func setupTestApp() *echonext.App {
 	})
 
 	// DELETE endpoint
-	app.DELETE("/users/:id", func(c echo.Context) error {
+	app.DELETE("/users/:id", func(c *echo.Context) error {
 		return c.NoContent(http.StatusNoContent)
 	})
 
 	// Authenticated endpoint
-	app.GET("/me", func(c echo.Context) (map[string]string, error) {
+	app.GET("/me", func(c *echo.Context) (map[string]string, error) {
 		auth := c.Request().Header.Get("Authorization")
 		return map[string]string{"auth": auth}, nil
 	})
 
 	// Custom header endpoint
-	app.GET("/headers", func(c echo.Context) (map[string]string, error) {
+	app.GET("/headers", func(c *echo.Context) (map[string]string, error) {
 		return map[string]string{
 			"x-custom": c.Request().Header.Get("X-Custom"),
 		}, nil

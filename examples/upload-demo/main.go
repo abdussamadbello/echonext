@@ -25,7 +25,7 @@ func main() {
 	})
 
 	// OpenAPI spec and docs
-	app.Echo.GET("/api/spec", func(c echo.Context) error {
+	app.Echo.GET("/api/spec", func(c *echo.Context) error {
 		return c.JSON(200, app.GenerateOpenAPISpec())
 	})
 	app.ServeSwaggerUI("/api/docs", "/api/spec")
@@ -43,11 +43,11 @@ type HealthResponse struct {
 	Status string `json:"status"`
 }
 
-func healthCheck(c echo.Context) (HealthResponse, error) {
+func healthCheck(c *echo.Context) (HealthResponse, error) {
 	return HealthResponse{Status: "healthy"}, nil
 }
 
-func serveHome(c echo.Context) error {
+func serveHome(c *echo.Context) error {
 	tmpl := template.Must(template.New("upload").Parse(uploadHTML))
 	return tmpl.Execute(c.Response(), nil)
 }

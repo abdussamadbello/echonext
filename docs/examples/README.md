@@ -300,7 +300,7 @@ type Response struct {
 }
 
 // 2. Implement handler
-func create(c echo.Context, req CreateRequest) (Response, error) {
+func create(c *echo.Context, req CreateRequest) (Response, error) {
     // Business logic
     result := service.Create(req)
     return result, nil
@@ -430,7 +430,7 @@ func (h *Handler) Register(app *echonext.App) {
     })
 }
 
-func (h *Handler) Create(c echo.Context, req CreateUserRequest) (UserResponse, error) {
+func (h *Handler) Create(c *echo.Context, req CreateUserRequest) (UserResponse, error) {
     user, err := h.service.Create(req)
     if err != nil {
         return UserResponse{}, echo.NewHTTPError(500, err.Error())
@@ -438,7 +438,7 @@ func (h *Handler) Create(c echo.Context, req CreateUserRequest) (UserResponse, e
     return ToUserResponse(user), nil
 }
 
-func (h *Handler) Get(c echo.Context) (UserResponse, error) {
+func (h *Handler) Get(c *echo.Context) (UserResponse, error) {
     id := parseID(c.Param("id"))
     user, err := h.service.GetByID(id)
     if err != nil {

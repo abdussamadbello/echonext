@@ -71,7 +71,7 @@ func main() {
 }
 
 // Handlers with typed parameters
-func createUser(c echo.Context, req CreateUserRequest) (UserResponse, error) {
+func createUser(c *echo.Context, req CreateUserRequest) (UserResponse, error) {
     // Your business logic here
     user := UserResponse{
         ID:    "123",
@@ -81,7 +81,7 @@ func createUser(c echo.Context, req CreateUserRequest) (UserResponse, error) {
     return user, nil
 }
 
-func getUser(c echo.Context) (UserResponse, error) {
+func getUser(c *echo.Context) (UserResponse, error) {
     id := c.Param("id")
     // Fetch user logic
     return UserResponse{
@@ -98,13 +98,13 @@ EchoNext supports various handler signatures:
 
 ```go
 // No request body (GET, DELETE)
-func handler(c echo.Context) (ResponseType, error)
+func handler(c *echo.Context) (ResponseType, error)
 
 // With request body (POST, PUT, PATCH)
-func handler(c echo.Context, req RequestType) (ResponseType, error)
+func handler(c *echo.Context, req RequestType) (ResponseType, error)
 
 // No response body
-func handler(c echo.Context) error
+func handler(c *echo.Context) error
 ```
 
 ## Validation
@@ -131,7 +131,7 @@ type ListUsersRequest struct {
     Sort  string `query:"sort" validate:"omitempty,oneof=name email created_at"`
 }
 
-func listUsers(c echo.Context, req ListUsersRequest) (ListResponse, error) {
+func listUsers(c *echo.Context, req ListUsersRequest) (ListResponse, error) {
     // Access validated query params from req
 }
 ```
@@ -141,7 +141,7 @@ func listUsers(c echo.Context, req ListUsersRequest) (ListResponse, error) {
 Return errors from handlers for automatic error responses:
 
 ```go
-func getUser(c echo.Context) (UserResponse, error) {
+func getUser(c *echo.Context) (UserResponse, error) {
     id := c.Param("id")
     user, err := db.GetUser(id)
     if err != nil {
@@ -166,7 +166,7 @@ app.Use(middleware.Recover())
 app.Use(middleware.CORS())
 app.Use(middleware.Gzip())
 app.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20)))
-app.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
+app.Use(middleware.BasicAuth(func(username, password string, c *echo.Context) (bool, error) {
     return username == "admin" && password == "secret", nil
 }))
 ```
@@ -203,7 +203,7 @@ api.POST("/users", createUser, echonext.Route{
 })
 
 // Mix typed and standard Echo handlers
-app.POST("/upload", func(c echo.Context) error {
+app.POST("/upload", func(c *echo.Context) error {
     file, err := c.FormFile("upload")
     if err != nil {
         return err
@@ -331,7 +331,7 @@ type AvatarResponse struct {
     URL string `json:"url"`
 }
 
-func uploadAvatar(c echo.Context, req AvatarRequest) (AvatarResponse, error) {
+func uploadAvatar(c *echo.Context, req AvatarRequest) (AvatarResponse, error) {
     // Access file metadata
     fmt.Printf("Filename: %s, Size: %d\n", req.File.Filename, req.File.Size)
 

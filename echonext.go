@@ -694,7 +694,7 @@ func (app *App) registerWSRoute(path string, handler interface{}, opts ...Route)
 
 	// Create WebSocket Echo handler
 	config := websocket.DefaultConfig()
-	echoHandler := func(c echo.Context) error {
+	echoHandler := func(c *echo.Context) error {
 		upgrader := websocket.CreateUpgrader(&config)
 		ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 		if err != nil {
@@ -720,7 +720,7 @@ func (app *App) registerWSRoute(path string, handler interface{}, opts ...Route)
 func (app *App) createUploadEchoHandler(handler interface{}, requestType, responseType reflect.Type, routeConfig *Route) echo.HandlerFunc {
 	handlerValue := reflect.ValueOf(handler)
 
-	return func(c echo.Context) error {
+	return func(c *echo.Context) error {
 		args := []reflect.Value{reflect.ValueOf(c)}
 
 		// Handle request binding if handler expects input
@@ -798,7 +798,7 @@ func (app *App) createUploadEchoHandler(handler interface{}, requestType, respon
 func (app *App) createEchoHandler(handler interface{}, requestType, responseType reflect.Type, routeConfig *Route) echo.HandlerFunc {
 	handlerValue := reflect.ValueOf(handler)
 
-	return func(c echo.Context) error {
+	return func(c *echo.Context) error {
 		args := []reflect.Value{reflect.ValueOf(c)}
 
 		// Handle request binding if handler expects input
@@ -809,7 +809,7 @@ func (app *App) createEchoHandler(handler interface{}, requestType, responseType
 			// Bind based on content type and method
 			if c.Request().Method == "GET" || c.Request().Method == "DELETE" {
 				// Bind query parameters
-				if err := (&echo.DefaultBinder{}).BindQueryParams(c, req); err != nil {
+				if err := echo.BindQueryParams(c, req); err != nil {
 					return c.JSON(http.StatusBadRequest, Response[any]{
 						Error:   fmt.Sprintf("Invalid query parameters: %v", err),
 						Success: false,
@@ -826,7 +826,7 @@ func (app *App) createEchoHandler(handler interface{}, requestType, responseType
 			}
 
 			// Bind path parameters
-			if err := (&echo.DefaultBinder{}).BindPathParams(c, req); err != nil {
+			if err := echo.BindPathValues(c, req); err != nil {
 				return c.JSON(http.StatusBadRequest, Response[any]{
 					Error:   fmt.Sprintf("Invalid path parameters: %v", err),
 					Success: false,
@@ -1443,14 +1443,14 @@ func (app *App) generateMultipartEncoding(t reflect.Type) map[string]*openapi3.E
 
 // ServeOpenAPISpec serves the OpenAPI specification
 func (app *App) ServeOpenAPISpec(path string) {
-	app.Echo.GET(path, func(c echo.Context) error {
+	app.Echo.GET(path, func(c *echo.Context) error {
 		return c.JSON(http.StatusOK, app.GenerateOpenAPISpec())
 	})
 }
 
 // ServeSwaggerUI serves Swagger UI for API documentation
 func (app *App) ServeSwaggerUI(path string, specPath string) {
-	app.Echo.GET(path, func(c echo.Context) error {
+	app.Echo.GET(path, func(c *echo.Context) error {
 		html := fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
@@ -1590,7 +1590,7 @@ func (app *App) GraphQLSubscriptions(schema interface{}, config ...graphql.Subsc
 	_ = gqlSchema // Use this to create handler
 
 	// Create Echo handler
-	echoHandler := func(c echo.Context) error {
+	echoHandler := func(c *echo.Context) error {
 		ctx := context.WithValue(c.Request().Context(), graphql.EchoContextKey, c)
 		c.SetRequest(c.Request().WithContext(ctx))
 		// Handler will be set up by the user with proper schema

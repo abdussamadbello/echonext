@@ -205,7 +205,7 @@ app.GET("/users", handler)
 ```go
 // ❌ Doesn't call next
 func myMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-    return func(c echo.Context) error {
+    return func(c *echo.Context) error {
         // Do something
         return nil  // Stops here!
     }
@@ -213,7 +213,7 @@ func myMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 // ✅ Calls next
 func myMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-    return func(c echo.Context) error {
+    return func(c *echo.Context) error {
         // Do something
         return next(c)  // Continue to next handler
     }
@@ -255,20 +255,20 @@ app.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 
 **Error:**
 ```
-cannot use func literal (type func(echo.Context) error) as type ...
+cannot use func literal (type func(*echo.Context) error) as type ...
 ```
 
 **Solution:** Use supported handler signatures:
 
 ```go
 // ✅ Supported signatures
-func(c echo.Context) (Response, error)
-func(c echo.Context, req Request) (Response, error)
-func(c echo.Context) error
-func(c echo.Context, req Request) error
+func(c *echo.Context) (Response, error)
+func(c *echo.Context, req Request) (Response, error)
+func(c *echo.Context) error
+func(c *echo.Context, req Request) error
 
 // ❌ Not supported
-func(c echo.Context) Response  // Missing error
+func(c *echo.Context) Response  // Missing error
 func(req Request) (Response, error)  // Missing context
 ```
 
@@ -526,7 +526,7 @@ if user != nil {
 **Solution:** Handle gracefully:
 
 ```go
-func handler(c echo.Context) error {
+func handler(c *echo.Context) error {
     select {
     case <-c.Request().Context().Done():
         return c.Request().Context().Err()

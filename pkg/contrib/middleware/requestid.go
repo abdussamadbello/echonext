@@ -17,7 +17,7 @@ const (
 // RequestIDConfig defines configuration for RequestID middleware
 type RequestIDConfig struct {
 	// Skipper defines a function to skip middleware
-	Skipper func(c echo.Context) bool
+	Skipper func(c *echo.Context) bool
 
 	// Generator defines a function to generate request ID
 	// Default: generates UUID v4
@@ -62,7 +62,7 @@ func RequestIDWithConfig(config RequestIDConfig) echo.MiddlewareFunc {
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			// Skip if configured
 			if config.Skipper != nil && config.Skipper(c) {
 				return next(c)
@@ -89,7 +89,7 @@ func RequestIDWithConfig(config RequestIDConfig) echo.MiddlewareFunc {
 }
 
 // GetRequestID retrieves the request ID from context
-func GetRequestID(c echo.Context) string {
+func GetRequestID(c *echo.Context) string {
 	if rid, ok := c.Get(ContextKeyRequestID).(string); ok {
 		return rid
 	}

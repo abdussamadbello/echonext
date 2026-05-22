@@ -96,7 +96,7 @@ func main() {
     app := echonext.New()
     app.SetInfo("My API", "1.0.0", "My EchoNext API")
     
-    app.GET("/health", func(c echo.Context) error {
+    app.GET("/health", func(c *echo.Context) error {
         return c.JSON(200, map[string]string{"status": "ok"})
     })
     

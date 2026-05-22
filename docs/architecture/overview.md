@@ -116,13 +116,13 @@ EchoNext supports multiple handler signatures:
 
 ```go
 // GET/DELETE without request body
-func(c echo.Context) (ResponseType, error)
+func(c *echo.Context) (ResponseType, error)
 
 // POST/PUT/PATCH with request body
-func(c echo.Context, req RequestType) (ResponseType, error)
+func(c *echo.Context, req RequestType) (ResponseType, error)
 
 // No response body (returns error only)
-func(c echo.Context) error
+func(c *echo.Context) error
 ```
 
 ### 3. Handler Wrapper Creation
@@ -131,10 +131,10 @@ When you register a typed handler, EchoNext creates a wrapper:
 
 ```go
 // Your handler
-func createUser(c echo.Context, req CreateUserRequest) (UserResponse, error)
+func createUser(c *echo.Context, req CreateUserRequest) (UserResponse, error)
 
 // EchoNext creates this wrapper via createEchoHandler()
-func wrapper(c echo.Context) error {
+func wrapper(c *echo.Context) error {
     // 1. Parse and validate request
     var req CreateUserRequest
     if err := parseAndValidate(c, &req); err != nil {

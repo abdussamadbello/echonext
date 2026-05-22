@@ -48,7 +48,7 @@
 //
 //	    // Or with custom options
 //	    app.Use(middleware.OTELMiddleware("my-service",
-//	        middleware.WithSkipper(func(c echo.Context) bool {
+//	        middleware.WithSkipper(func(c *echo.Context) bool {
 //	            return c.Path() == "/health"
 //	        }),
 //	        middleware.WithCustomAttributes(
@@ -57,7 +57,7 @@
 //	    ))
 //
 //	    // Access trace info in handlers
-//	    app.GET("/users", func(c echo.Context) error {
+//	    app.GET("/users", func(c *echo.Context) error {
 //	        traceID := middleware.GetTraceID(c)
 //	        middleware.AddSpanEvent(c, "fetching users")
 //	        // ...
@@ -85,7 +85,7 @@
 //
 // Making traced outgoing requests in handlers:
 //
-//	app.GET("/users/:id", func(c echo.Context) error {
+//	app.GET("/users/:id", func(c *echo.Context) error {
 //	    // Get context with trace info from incoming request
 //	    ctx := c.Request().Context()
 //
@@ -142,7 +142,7 @@
 //
 //	// Use structured logging with request IDs
 //	app.Use(middleware.StructuredLogger(middleware.StructuredLoggerConfig{
-//	    CustomFields: func(c echo.Context) map[string]interface{} {
+//	    CustomFields: func(c *echo.Context) map[string]interface{} {
 //	        return map[string]interface{}{
 //	            "user_agent": c.Request().UserAgent(),
 //	        }

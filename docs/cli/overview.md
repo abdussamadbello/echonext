@@ -480,7 +480,7 @@ func (h *Handler) Register(app *echonext.App) {
     // ... more routes
 }
 
-func (h *Handler) Create(c echo.Context, req CreateUserRequest) (UserResponse, error) {
+func (h *Handler) Create(c *echo.Context, req CreateUserRequest) (UserResponse, error) {
     // Implementation
 }
 ```

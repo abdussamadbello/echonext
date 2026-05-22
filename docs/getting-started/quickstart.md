@@ -99,11 +99,11 @@ func main() {
 }
 
 // Handler functions
-func listTodos(c echo.Context) ([]Todo, error) {
+func listTodos(c *echo.Context) ([]Todo, error) {
     return todos, nil
 }
 
-func getTodo(c echo.Context) (Todo, error) {
+func getTodo(c *echo.Context) (Todo, error) {
     id := c.Param("id")
     for _, todo := range todos {
         if todo.ID == parseID(id) {
@@ -113,7 +113,7 @@ func getTodo(c echo.Context) (Todo, error) {
     return Todo{}, echo.NewHTTPError(404, "todo not found")
 }
 
-func createTodo(c echo.Context, req CreateTodoRequest) (Todo, error) {
+func createTodo(c *echo.Context, req CreateTodoRequest) (Todo, error) {
     todo := Todo{
         ID:        nextID,
         Title:     req.Title,
@@ -124,7 +124,7 @@ func createTodo(c echo.Context, req CreateTodoRequest) (Todo, error) {
     return todo, nil
 }
 
-func updateTodo(c echo.Context, req UpdateTodoRequest) (Todo, error) {
+func updateTodo(c *echo.Context, req UpdateTodoRequest) (Todo, error) {
     id := c.Param("id")
     for i, todo := range todos {
         if todo.ID == parseID(id) {
@@ -140,7 +140,7 @@ func updateTodo(c echo.Context, req UpdateTodoRequest) (Todo, error) {
     return Todo{}, echo.NewHTTPError(404, "todo not found")
 }
 
-func deleteTodo(c echo.Context) error {
+func deleteTodo(c *echo.Context) error {
     id := c.Param("id")
     for i, todo := range todos {
         if todo.ID == parseID(id) {
@@ -217,7 +217,7 @@ Instead of manually parsing JSON:
 
 ```go
 // ❌ Traditional way
-func handler(c echo.Context) error {
+func handler(c *echo.Context) error {
     var req CreateTodoRequest
     if err := c.Bind(&req); err != nil {
         return err
@@ -229,7 +229,7 @@ func handler(c echo.Context) error {
 }
 
 // ✅ EchoNext way
-func handler(c echo.Context, req CreateTodoRequest) (Todo, error) {
+func handler(c *echo.Context, req CreateTodoRequest) (Todo, error) {
     // req is already parsed and validated!
     return todo, nil
 }
@@ -326,7 +326,7 @@ type ListTodosRequest struct {
     Status string `query:"status" validate:"omitempty,oneof=all active completed"`
 }
 
-func listTodos(c echo.Context, req ListTodosRequest) ([]Todo, error) {
+func listTodos(c *echo.Context, req ListTodosRequest) ([]Todo, error) {
     // Use req.Page, req.Limit, req.Status
     return filteredTodos, nil
 }
@@ -335,7 +335,7 @@ func listTodos(c echo.Context, req ListTodosRequest) ([]Todo, error) {
 ### Error Handling
 
 ```go
-func getTodo(c echo.Context) (Todo, error) {
+func getTodo(c *echo.Context) (Todo, error) {
     id := c.Param("id")
     todo, err := db.FindTodo(id)
     if err != nil {

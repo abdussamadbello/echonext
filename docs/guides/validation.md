@@ -27,7 +27,7 @@ type CreateUserRequest struct {
     Age   int    `json:"age" validate:"required,min=18,max=120"`
 }
 
-func createUser(c echo.Context, req CreateUserRequest) (UserResponse, error) {
+func createUser(c *echo.Context, req CreateUserRequest) (UserResponse, error) {
     // req is already validated!
     // If validation fails, client gets 422 with error details
     user := service.Create(req)

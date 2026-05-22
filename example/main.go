@@ -114,11 +114,10 @@ func main() {
 	})
 
 	// Add middleware
-	app.Use(middleware.Logger())
 	app.Use(middleware.Recover())
 	app.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
-		AllowMethods: []string{echo.GET, echo.PUT, echo.POST, echo.DELETE},
+		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
 	}))
 
 	// Add OTEL middleware for automatic request tracing
@@ -226,7 +225,7 @@ func main() {
 }
 
 // Handler implementations
-func healthCheck(c echo.Context) (map[string]interface{}, error) {
+func healthCheck(c *echo.Context) (map[string]interface{}, error) {
 	return map[string]interface{}{
 		"status":  "healthy",
 		"service": "todo-api",
@@ -234,7 +233,7 @@ func healthCheck(c echo.Context) (map[string]interface{}, error) {
 	}, nil
 }
 
-func createTodo(c echo.Context, req CreateTodoRequest) (Todo, error) {
+func createTodo(c *echo.Context, req CreateTodoRequest) (Todo, error) {
 	todo := Todo{
 		ID:          generateID(),
 		Title:       req.Title,
@@ -248,7 +247,7 @@ func createTodo(c echo.Context, req CreateTodoRequest) (Todo, error) {
 	return todo, nil
 }
 
-func listTodos(c echo.Context, req ListTodosRequest) (ListTodosResponse, error) {
+func listTodos(c *echo.Context, req ListTodosRequest) (ListTodosResponse, error) {
 	// Set defaults
 	if req.Page == 0 {
 		req.Page = 1
@@ -284,7 +283,7 @@ func listTodos(c echo.Context, req ListTodosRequest) (ListTodosResponse, error) 
 	}, nil
 }
 
-func getTodo(c echo.Context) (Todo, error) {
+func getTodo(c *echo.Context) (Todo, error) {
 	id := c.Param("id")
 	todo, exists := todos[id]
 	if !exists {
@@ -293,7 +292,7 @@ func getTodo(c echo.Context) (Todo, error) {
 	return *todo, nil
 }
 
-func updateTodo(c echo.Context, req UpdateTodoRequest) (Todo, error) {
+func updateTodo(c *echo.Context, req UpdateTodoRequest) (Todo, error) {
 	id := c.Param("id")
 	todo, exists := todos[id]
 	if !exists {
@@ -315,7 +314,7 @@ func updateTodo(c echo.Context, req UpdateTodoRequest) (Todo, error) {
 	return *todo, nil
 }
 
-func deleteTodo(c echo.Context) error {
+func deleteTodo(c *echo.Context) error {
 	id := c.Param("id")
 	if _, exists := todos[id]; !exists {
 		return echo.NewHTTPError(404, "todo not found")
@@ -365,7 +364,7 @@ func seedData() {
 
 // fetchExternalData demonstrates making traced outgoing HTTP requests
 // The trace context is automatically propagated to external services
-func fetchExternalData(c echo.Context) (map[string]interface{}, error) {
+func fetchExternalData(c *echo.Context) (map[string]interface{}, error) {
 	// Add a custom span event (visible in trace viewers like Jaeger)
 	contribmw.AddSpanEvent(c, "starting external API call")
 
@@ -409,7 +408,7 @@ func fetchExternalData(c echo.Context) (map[string]interface{}, error) {
 
 // getTraceInfo returns the current trace context information
 // Useful for debugging distributed traces
-func getTraceInfo(c echo.Context) (map[string]interface{}, error) {
+func getTraceInfo(c *echo.Context) (map[string]interface{}, error) {
 	traceID := contribmw.GetTraceID(c)
 	spanID := contribmw.GetSpanID(c)
 	requestID := contribmw.GetRequestID(c)

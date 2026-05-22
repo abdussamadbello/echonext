@@ -40,11 +40,11 @@ type HealthResponse struct {
 	Status string `json:"status"`
 }
 
-func healthCheck(c echo.Context) (HealthResponse, error) {
+func healthCheck(c *echo.Context) (HealthResponse, error) {
 	return HealthResponse{Status: "healthy"}, nil
 }
 
-func serveHome(c echo.Context) error {
+func serveHome(c *echo.Context) error {
 	tmpl := template.Must(template.New("chat").Parse(chatHTML))
 	return tmpl.Execute(c.Response(), nil)
 }
