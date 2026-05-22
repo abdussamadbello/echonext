@@ -63,7 +63,7 @@ func (m *Metrics) GetMetrics() map[string]interface{} {
 // MetricsMiddleware returns middleware that collects request metrics
 func MetricsMiddleware(metrics *Metrics) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			start := time.Now()
 
 			// Process request
@@ -71,7 +71,10 @@ func MetricsMiddleware(metrics *Metrics) echo.MiddlewareFunc {
 
 			// Record metrics
 			duration := time.Since(start)
-			statusCode := c.Response().Status
+			statusCode := 0
+			if r, ok := c.Response().(*echo.Response); ok {
+				statusCode = r.Status
+			}
 			metrics.Record(statusCode, duration)
 
 			return err
@@ -81,7 +84,7 @@ func MetricsMiddleware(metrics *Metrics) echo.MiddlewareFunc {
 
 // MetricsHandler returns a handler that exposes metrics
 func MetricsHandler(metrics *Metrics) echo.HandlerFunc {
-	return func(c echo.Context) error {
+	return func(c *echo.Context) error {
 		return c.JSON(200, metrics.GetMetrics())
 	}
 }

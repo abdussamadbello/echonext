@@ -19,8 +19,8 @@ import (
 
 	"github.com/abdussamadbello/echonext"
 	"github.com/abdussamadbello/echonext/pkg/contrib/middleware"
-	"github.com/labstack/echo/v4"
-	echomw "github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v5"
+	echomw "github.com/labstack/echo/v5/middleware"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -106,7 +106,6 @@ func main() {
 	// ========================================================================
 	// Step 4: Add Middleware
 	// ========================================================================
-	app.Use(echomw.Logger())
 	app.Use(echomw.Recover())
 
 	// RequestID adds X-Request-ID header for correlation
@@ -204,7 +203,7 @@ func main() {
 // Handler Implementations
 // ============================================================================
 
-func healthCheck(c echo.Context) (map[string]interface{}, error) {
+func healthCheck(c *echo.Context) (map[string]interface{}, error) {
 	return map[string]interface{}{
 		"status":    "healthy",
 		"service":   "order-service",
@@ -213,7 +212,7 @@ func healthCheck(c echo.Context) (map[string]interface{}, error) {
 	}, nil
 }
 
-func createOrder(c echo.Context, req CreateOrderRequest) (Order, error) {
+func createOrder(c *echo.Context, req CreateOrderRequest) (Order, error) {
 	// Add a span event to mark the start of order creation
 	middleware.AddSpanEvent(c, "creating order",
 		attribute.String("product", req.Product),
@@ -238,7 +237,7 @@ func createOrder(c echo.Context, req CreateOrderRequest) (Order, error) {
 	return order, nil
 }
 
-func listOrders(c echo.Context) ([]Order, error) {
+func listOrders(c *echo.Context) ([]Order, error) {
 	middleware.AddSpanEvent(c, "listing orders",
 		attribute.Int("count", len(orders)),
 	)
@@ -250,7 +249,7 @@ func listOrders(c echo.Context) ([]Order, error) {
 	return result, nil
 }
 
-func getOrder(c echo.Context) (Order, error) {
+func getOrder(c *echo.Context) (Order, error) {
 	id := c.Param("id")
 
 	middleware.AddSpanEvent(c, "fetching order",
@@ -271,7 +270,7 @@ func getOrder(c echo.Context) (Order, error) {
 // ============================================================================
 
 // demoExternalCall demonstrates traced outgoing HTTP requests
-func demoExternalCall(c echo.Context) (map[string]interface{}, error) {
+func demoExternalCall(c *echo.Context) (map[string]interface{}, error) {
 	middleware.AddSpanEvent(c, "starting external API call")
 
 	// Get the request context - it contains the trace context
@@ -309,7 +308,7 @@ func demoExternalCall(c echo.Context) (map[string]interface{}, error) {
 }
 
 // demoTraceInfo returns current trace context information
-func demoTraceInfo(c echo.Context) (map[string]interface{}, error) {
+func demoTraceInfo(c *echo.Context) (map[string]interface{}, error) {
 	middleware.AddSpanEvent(c, "trace info requested")
 
 	return map[string]interface{}{
@@ -326,7 +325,7 @@ func demoTraceInfo(c echo.Context) (map[string]interface{}, error) {
 }
 
 // demoNestedSpans demonstrates adding span events for sub-operations
-func demoNestedSpans(c echo.Context) (map[string]interface{}, error) {
+func demoNestedSpans(c *echo.Context) (map[string]interface{}, error) {
 	// Simulate a multi-step operation with span events
 	middleware.AddSpanEvent(c, "step 1: validating input")
 	time.Sleep(10 * time.Millisecond)
@@ -354,7 +353,7 @@ func demoNestedSpans(c echo.Context) (map[string]interface{}, error) {
 }
 
 // demoErrorRecording demonstrates how errors appear in traces
-func demoErrorRecording(c echo.Context) (map[string]interface{}, error) {
+func demoErrorRecording(c *echo.Context) (map[string]interface{}, error) {
 	// Simulate an error scenario
 	simulatedErr := fmt.Errorf("simulated error for demonstration")
 

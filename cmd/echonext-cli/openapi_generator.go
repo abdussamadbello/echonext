@@ -803,7 +803,7 @@ func (g *OpenAPIGenerator) generateHandlersInline(endpoints []EndpointInfo) stri
 		}
 
 		// Write function signature
-		sig := fmt.Sprintf("func %s(c echo.Context", ep.FuncName)
+		sig := fmt.Sprintf("func %s(c *echo.Context", ep.FuncName)
 		if ep.HasRequest {
 			sig += fmt.Sprintf(", req %s", ep.RequestType)
 		}

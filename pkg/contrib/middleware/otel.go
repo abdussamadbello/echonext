@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v5"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
@@ -55,7 +55,7 @@ type OTELConfig struct {
 	EnableMetrics bool
 
 	// Skipper defines a function to skip OTEL for certain requests
-	Skipper func(echo.Context) bool
+	Skipper func(*echo.Context) bool
 
 	// CustomAttributes adds custom attributes to all spans
 	CustomAttributes []attribute.KeyValue
@@ -208,14 +208,12 @@ func OTELMiddleware(serviceName string, opts ...OTELMiddlewareOption) echo.Middl
 		opt(&cfg)
 	}
 
-	// Use otelecho middleware as the base
-	baseMiddleware := otelecho.Middleware(serviceName)
+	base := echoTracingMiddleware(serviceName)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		// Wrap with otelecho first
-		handler := baseMiddleware(next)
+		handler := base(next)
 
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			// Skip if configured
 			if cfg.skipper != nil && cfg.skipper(c) {
 				return next(c)
@@ -238,10 +236,61 @@ func OTELMiddleware(serviceName string, opts ...OTELMiddlewareOption) echo.Middl
 	}
 }
 
+// echoTracingMiddleware is a minimal Echo v5 tracing middleware that mirrors
+// what otelecho.Middleware provided for Echo v4. It extracts incoming trace
+// context, starts a server span around the handler, and records the response
+// status. Implemented in-tree because the upstream otelecho package targets
+// Echo v4 only.
+func echoTracingMiddleware(serviceName string) echo.MiddlewareFunc {
+	tracer := otel.Tracer(serviceName)
+	propagator := otel.GetTextMapPropagator()
+
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			req := c.Request()
+			ctx := propagator.Extract(req.Context(), propagation.HeaderCarrier(req.Header))
+
+			spanName := req.Method + " " + req.URL.Path
+			ctx, span := tracer.Start(ctx, spanName,
+				trace.WithSpanKind(trace.SpanKindServer),
+				trace.WithAttributes(
+					semconv.HTTPRequestMethodKey.String(req.Method),
+					semconv.URLPath(req.URL.Path),
+					semconv.URLScheme(c.Scheme()),
+					semconv.UserAgentOriginal(req.UserAgent()),
+				),
+			)
+			defer span.End()
+
+			c.SetRequest(req.WithContext(ctx))
+
+			err := next(c)
+
+			status := 0
+			if r, ok := c.Response().(*echo.Response); ok {
+				status = r.Status
+			}
+			if status == 0 {
+				status = http.StatusOK
+			}
+			span.SetAttributes(semconv.HTTPResponseStatusCode(status))
+
+			if err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, err.Error())
+			} else if status >= 500 {
+				span.SetStatus(codes.Error, http.StatusText(status))
+			}
+
+			return err
+		}
+	}
+}
+
 // otelMiddlewareConfig holds middleware configuration
 type otelMiddlewareConfig struct {
 	serviceName      string
-	skipper          func(echo.Context) bool
+	skipper          func(*echo.Context) bool
 	customAttributes []attribute.KeyValue
 }
 
@@ -249,7 +298,7 @@ type otelMiddlewareConfig struct {
 type OTELMiddlewareOption func(*otelMiddlewareConfig)
 
 // WithSkipper sets a skipper function for the middleware
-func WithSkipper(skipper func(echo.Context) bool) OTELMiddlewareOption {
+func WithSkipper(skipper func(*echo.Context) bool) OTELMiddlewareOption {
 	return func(cfg *otelMiddlewareConfig) {
 		cfg.skipper = skipper
 	}
@@ -265,11 +314,11 @@ func WithCustomAttributes(attrs ...attribute.KeyValue) OTELMiddlewareOption {
 // OTELTracingMiddleware returns a simpler tracing-only middleware
 // Use this if you only need distributed tracing without metrics
 func OTELTracingMiddleware(serviceName string) echo.MiddlewareFunc {
-	return otelecho.Middleware(serviceName)
+	return echoTracingMiddleware(serviceName)
 }
 
 // GetTraceID extracts the trace ID from the current request context
-func GetTraceID(c echo.Context) string {
+func GetTraceID(c *echo.Context) string {
 	span := trace.SpanFromContext(c.Request().Context())
 	if span.SpanContext().HasTraceID() {
 		return span.SpanContext().TraceID().String()
@@ -278,7 +327,7 @@ func GetTraceID(c echo.Context) string {
 }
 
 // GetSpanID extracts the span ID from the current request context
-func GetSpanID(c echo.Context) string {
+func GetSpanID(c *echo.Context) string {
 	span := trace.SpanFromContext(c.Request().Context())
 	if span.SpanContext().HasSpanID() {
 		return span.SpanContext().SpanID().String()
@@ -287,32 +336,32 @@ func GetSpanID(c echo.Context) string {
 }
 
 // AddSpanEvent adds an event to the current span
-func AddSpanEvent(c echo.Context, name string, attrs ...attribute.KeyValue) {
+func AddSpanEvent(c *echo.Context, name string, attrs ...attribute.KeyValue) {
 	span := trace.SpanFromContext(c.Request().Context())
 	span.AddEvent(name, trace.WithAttributes(attrs...))
 }
 
 // SetSpanAttributes adds attributes to the current span
-func SetSpanAttributes(c echo.Context, attrs ...attribute.KeyValue) {
+func SetSpanAttributes(c *echo.Context, attrs ...attribute.KeyValue) {
 	span := trace.SpanFromContext(c.Request().Context())
 	span.SetAttributes(attrs...)
 }
 
 // SetSpanStatus sets the status of the current span
-func SetSpanStatus(c echo.Context, code trace.SpanKind, description string) {
+func SetSpanStatus(c *echo.Context, code trace.SpanKind, description string) {
 	// Note: This is intentionally a no-op as SpanKind is set at span creation
 	// Use RecordError for error status
 }
 
 // RecordError records an error in the current span
-func RecordError(c echo.Context, err error, opts ...trace.EventOption) {
+func RecordError(c *echo.Context, err error, opts ...trace.EventOption) {
 	span := trace.SpanFromContext(c.Request().Context())
 	span.RecordError(err, opts...)
 }
 
 // StartSpan starts a new child span from the request context
 // Remember to call span.End() when done
-func StartSpan(c echo.Context, name string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+func StartSpan(c *echo.Context, name string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
 	tracer := otel.Tracer("")
 	return tracer.Start(c.Request().Context(), name, opts...)
 }
@@ -498,12 +547,12 @@ func WrapHTTPClient(client *http.Client) *TracedHTTPClient {
 
 // HTTPClientFromContext creates a request with trace context from echo.Context
 // This is a convenience function for making outgoing requests that continue the trace
-func HTTPClientFromContext(c echo.Context) context.Context {
+func HTTPClientFromContext(c *echo.Context) context.Context {
 	return c.Request().Context()
 }
 
 // NewRequestWithTrace creates an http.Request with trace context from echo.Context
-func NewRequestWithTrace(c echo.Context, method, url string, body interface{}) (*http.Request, error) {
+func NewRequestWithTrace(c *echo.Context, method, url string, body interface{}) (*http.Request, error) {
 	ctx := c.Request().Context()
 
 	var req *http.Request

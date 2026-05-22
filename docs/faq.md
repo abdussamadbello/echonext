@@ -44,7 +44,7 @@ app := echonext.New()
 app.GET("/typed", typedHandler, echonext.Route{...})
 
 // Regular Echo handler
-app.GET("/standard", func(c echo.Context) error {
+app.GET("/standard", func(c *echo.Context) error {
     return c.String(200, "OK")
 })
 ```
@@ -79,12 +79,12 @@ EchoNext supports these signatures:
 
 ```go
 // No request body
-func(c echo.Context) (Response, error)
-func(c echo.Context) error
+func(c *echo.Context) (Response, error)
+func(c *echo.Context) error
 
 // With request body
-func(c echo.Context, req Request) (Response, error)
-func(c echo.Context, req Request) error
+func(c *echo.Context, req Request) (Response, error)
+func(c *echo.Context, req Request) error
 ```
 
 ### How do I handle path parameters?
@@ -92,7 +92,7 @@ func(c echo.Context, req Request) error
 Use `c.Param()` from the Echo context:
 
 ```go
-func getUser(c echo.Context) (UserResponse, error) {
+func getUser(c *echo.Context) (UserResponse, error) {
     id := c.Param("id")
     // Use id...
 }
@@ -108,7 +108,7 @@ type ListRequest struct {
     Limit int `query:"limit" validate:"min=1,max=100"`
 }
 
-func list(c echo.Context, req ListRequest) (Response, error) {
+func list(c *echo.Context, req ListRequest) (Response, error) {
     // req.Page and req.Limit are automatically populated
 }
 ```
@@ -118,7 +118,7 @@ func list(c echo.Context, req ListRequest) (Response, error) {
 Yes, through the Echo context:
 
 ```go
-func handler(c echo.Context, req Request) (Response, error) {
+func handler(c *echo.Context, req Request) (Response, error) {
     token := c.Request().Header.Get("Authorization")
     userAgent := c.Request().UserAgent()
 }
@@ -129,7 +129,7 @@ func handler(c echo.Context, req Request) (Response, error) {
 Use Echo's file handling methods:
 
 ```go
-func upload(c echo.Context) error {
+func upload(c *echo.Context) error {
     file, err := c.FormFile("file")
     if err != nil {
         return err

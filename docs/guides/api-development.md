@@ -287,7 +287,7 @@ func (h *Handler) Register(app *echonext.App) {
     })
 }
 
-func (h *Handler) Create(c echo.Context, req CreateUserRequest) (UserResponse, error) {
+func (h *Handler) Create(c *echo.Context, req CreateUserRequest) (UserResponse, error) {
     user, err := h.service.Create(req)
     if err != nil {
         return UserResponse{}, echo.NewHTTPError(500, err.Error())
@@ -295,7 +295,7 @@ func (h *Handler) Create(c echo.Context, req CreateUserRequest) (UserResponse, e
     return ToUserResponse(user), nil
 }
 
-func (h *Handler) List(c echo.Context, req ListUsersRequest) (ListUsersResponse, error) {
+func (h *Handler) List(c *echo.Context, req ListUsersRequest) (ListUsersResponse, error) {
     users, total, err := h.service.List(req.Page, req.Limit, req.Search)
     if err != nil {
         return ListUsersResponse{}, echo.NewHTTPError(500, err.Error())
@@ -309,7 +309,7 @@ func (h *Handler) List(c echo.Context, req ListUsersRequest) (ListUsersResponse,
     }, nil
 }
 
-func (h *Handler) Get(c echo.Context) (UserResponse, error) {
+func (h *Handler) Get(c *echo.Context) (UserResponse, error) {
     id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
     
     user, err := h.service.GetByID(uint(id))
@@ -320,7 +320,7 @@ func (h *Handler) Get(c echo.Context) (UserResponse, error) {
     return ToUserResponse(user), nil
 }
 
-func (h *Handler) Update(c echo.Context, req UpdateUserRequest) (UserResponse, error) {
+func (h *Handler) Update(c *echo.Context, req UpdateUserRequest) (UserResponse, error) {
     id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
     
     user, err := h.service.Update(uint(id), req)
@@ -331,7 +331,7 @@ func (h *Handler) Update(c echo.Context, req UpdateUserRequest) (UserResponse, e
     return ToUserResponse(user), nil
 }
 
-func (h *Handler) Delete(c echo.Context) error {
+func (h *Handler) Delete(c *echo.Context) error {
     id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
     
     if err := h.service.Delete(uint(id)); err != nil {
@@ -414,7 +414,7 @@ app.POST("/resources", create, echonext.Route{
     SuccessStatus: 201,
 })
 
-func create(c echo.Context, req CreateRequest) (Response, error) {
+func create(c *echo.Context, req CreateRequest) (Response, error) {
     resource, err := service.Create(req)
     if err != nil {
         return Response{}, echo.NewHTTPError(500, err.Error())
@@ -430,7 +430,7 @@ app.GET("/resources/:id", get, echonext.Route{
     Summary: "Get resource by ID",
 })
 
-func get(c echo.Context) (Response, error) {
+func get(c *echo.Context) (Response, error) {
     id := c.Param("id")
     resource, err := service.GetByID(id)
     if err != nil {
@@ -447,7 +447,7 @@ app.GET("/resources", list, echonext.Route{
     Summary: "List resources",
 })
 
-func list(c echo.Context, req ListRequest) (ListResponse, error) {
+func list(c *echo.Context, req ListRequest) (ListResponse, error) {
     resources, total, err := service.List(req.Page, req.Limit)
     if err != nil {
         return ListResponse{}, echo.NewHTTPError(500, err.Error())
@@ -467,7 +467,7 @@ app.PUT("/resources/:id", update, echonext.Route{
     Summary: "Update resource",
 })
 
-func update(c echo.Context, req UpdateRequest) (Response, error) {
+func update(c *echo.Context, req UpdateRequest) (Response, error) {
     id := c.Param("id")
     resource, err := service.Update(id, req)
     if err != nil {
@@ -485,7 +485,7 @@ app.DELETE("/resources/:id", delete, echonext.Route{
     SuccessStatus: 204,
 })
 
-func delete(c echo.Context) error {
+func delete(c *echo.Context) error {
     id := c.Param("id")
     if err := service.Delete(id); err != nil {
         return echo.NewHTTPError(500, err.Error())
@@ -631,7 +631,7 @@ import (
 // Add JWT middleware
 app.Use(middleware.JWTWithConfig(middleware.JWTConfig{
     SigningKey: []byte("secret"),
-    Skipper: func(c echo.Context) bool {
+    Skipper: func(c *echo.Context) bool {
         // Skip auth for public endpoints
         return c.Path() == "/login" || c.Path() == "/register"
     },
@@ -649,7 +649,7 @@ app.GET("/profile", getProfile, echonext.Route{
 ```go
 func RequireRole(role string) echo.MiddlewareFunc {
     return func(next echo.HandlerFunc) echo.HandlerFunc {
-        return func(c echo.Context) error {
+        return func(c *echo.Context) error {
             user := c.Get("user").(*jwt.Token)
             claims := user.Claims.(jwt.MapClaims)
             userRole := claims["role"].(string)
@@ -672,7 +672,7 @@ app.DELETE("/users/:id", deleteUser, echonext.Route{
 ## File Uploads
 
 ```go
-func upload(c echo.Context) (UploadResponse, error) {
+func upload(c *echo.Context) (UploadResponse, error) {
     // Get file from request
     file, err := c.FormFile("file")
     if err != nil {

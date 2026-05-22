@@ -31,7 +31,7 @@ func TestEchoNextRoutes(t *testing.T) {
 	app := echonext.New()
 
 	// Register test route
-	app.POST("/users", func(c echo.Context, req CreateUserRequest) (TestUser, error) {
+	app.POST("/users", func(c *echo.Context, req CreateUserRequest) (TestUser, error) {
 		return TestUser{
 			ID:    "123",
 			Name:  req.Name,
@@ -116,14 +116,14 @@ func TestOpenAPIGeneration(t *testing.T) {
 	app.SetInfo("Test API", "1.0.0", "Test API Description")
 
 	// Register routes
-	app.GET("/users", func(c echo.Context) ([]TestUser, error) {
+	app.GET("/users", func(c *echo.Context) ([]TestUser, error) {
 		return []TestUser{{ID: "1", Name: "John", Email: "john@example.com"}}, nil
 	}, echonext.Route{
 		Summary: "List users",
 		Tags:    []string{"Users"},
 	})
 
-	app.POST("/users", func(c echo.Context, req CreateUserRequest) (TestUser, error) {
+	app.POST("/users", func(c *echo.Context, req CreateUserRequest) (TestUser, error) {
 		return TestUser{ID: "1", Name: req.Name, Email: req.Email}, nil
 	}, echonext.Route{
 		Summary: "Create user",
@@ -160,7 +160,7 @@ func TestQueryParameters(t *testing.T) {
 		Sort  string `query:"sort"`
 	}
 
-	app.GET("/items", func(c echo.Context, req ListRequest) (map[string]interface{}, error) {
+	app.GET("/items", func(c *echo.Context, req ListRequest) (map[string]interface{}, error) {
 		return map[string]interface{}{
 			"page":  req.Page,
 			"limit": req.Limit,
@@ -188,7 +188,7 @@ func TestQueryParameters(t *testing.T) {
 func TestErrorHandling(t *testing.T) {
 	app := echonext.New()
 
-	app.GET("/error", func(c echo.Context) (TestUser, error) {
+	app.GET("/error", func(c *echo.Context) (TestUser, error) {
 		return TestUser{}, echo.NewHTTPError(404, "user not found")
 	})
 
@@ -210,7 +210,7 @@ func TestErrorHandling(t *testing.T) {
 func BenchmarkEchoNext(b *testing.B) {
 	app := echonext.New()
 
-	app.POST("/users", func(c echo.Context, req CreateUserRequest) (TestUser, error) {
+	app.POST("/users", func(c *echo.Context, req CreateUserRequest) (TestUser, error) {
 		return TestUser{
 			ID:    "123",
 			Name:  req.Name,
@@ -279,7 +279,7 @@ func createTestApp() *echonext.App {
 	// In-memory storage
 	users := make(map[string]*TestUser)
 
-	app.POST("/users", func(c echo.Context, req CreateUserRequest) (TestUser, error) {
+	app.POST("/users", func(c *echo.Context, req CreateUserRequest) (TestUser, error) {
 		user := TestUser{
 			ID:    generateTestID(),
 			Name:  req.Name,
@@ -289,7 +289,7 @@ func createTestApp() *echonext.App {
 		return user, nil
 	})
 
-	app.GET("/users/:id", func(c echo.Context) (TestUser, error) {
+	app.GET("/users/:id", func(c *echo.Context) (TestUser, error) {
 		id := c.Param("id")
 		user, exists := users[id]
 		if !exists {
@@ -337,7 +337,7 @@ func TestAdvancedOpenAPIFeatures(t *testing.T) {
 	}
 
 	// Register route with advanced features
-	app.POST("/advanced", func(c echo.Context, req AdvancedRequest) (AdvancedResponse, error) {
+	app.POST("/advanced", func(c *echo.Context, req AdvancedRequest) (AdvancedResponse, error) {
 		return AdvancedResponse{
 			ID:   "123",
 			Name: req.Name,
@@ -416,7 +416,7 @@ func TestAdvancedOpenAPIFeatures(t *testing.T) {
 func TestCustomStatusCodes(t *testing.T) {
 	app := echonext.New()
 
-	app.POST("/create", func(c echo.Context, req TestUser) (TestUser, error) {
+	app.POST("/create", func(c *echo.Context, req TestUser) (TestUser, error) {
 		return req, nil
 	}, echonext.Route{
 		SuccessStatus: 201,
@@ -593,7 +593,7 @@ func TestGlobalSecurityAppliedToRoutes(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	app.GET("/users", func(c echo.Context) ([]TestUser, error) {
+	app.GET("/users", func(c *echo.Context) ([]TestUser, error) {
 		return nil, nil
 	}, echonext.Route{
 		Summary: "List users",
@@ -619,7 +619,7 @@ func TestGlobalSecurityOverriddenByRoute(t *testing.T) {
 
 	_ = app.SetGlobalSecurity(echonext.SecurityRequirement{SchemeName: "bearerAuth"})
 
-	app.POST("/admin", func(c echo.Context, req CreateUserRequest) (TestUser, error) {
+	app.POST("/admin", func(c *echo.Context, req CreateUserRequest) (TestUser, error) {
 		return TestUser{}, nil
 	}, echonext.Route{
 		Summary: "Admin action",
@@ -642,7 +642,7 @@ func TestGlobalSecurityDisabledForRoute(t *testing.T) {
 	_ = app.AddSecurityScheme("bearerAuth", echonext.Security{Type: "bearer", Scheme: "JWT"})
 	_ = app.SetGlobalSecurity(echonext.SecurityRequirement{SchemeName: "bearerAuth"})
 
-	app.GET("/health", func(c echo.Context) (map[string]string, error) {
+	app.GET("/health", func(c *echo.Context) (map[string]string, error) {
 		return map[string]string{"status": "ok"}, nil
 	}, echonext.Route{
 		Summary:               "Health check",
@@ -674,7 +674,7 @@ func TestClearGlobalSecurity(t *testing.T) {
 	_ = app.SetGlobalSecurity(echonext.SecurityRequirement{SchemeName: "bearerAuth"})
 	app.ClearGlobalSecurity()
 
-	app.GET("/users", func(c echo.Context) ([]TestUser, error) {
+	app.GET("/users", func(c *echo.Context) ([]TestUser, error) {
 		return nil, nil
 	})
 
@@ -691,7 +691,7 @@ func TestRouteReferencesSchemeByName(t *testing.T) {
 		Scheme: "JWT",
 	})
 
-	app.GET("/protected", func(c echo.Context) (map[string]string, error) {
+	app.GET("/protected", func(c *echo.Context) (map[string]string, error) {
 		return nil, nil
 	}, echonext.Route{
 		Security: []echonext.SecurityRequirement{
@@ -744,7 +744,7 @@ func TestMultipleSecurityRequirementsWithScopes(t *testing.T) {
 		In:   "header",
 	})
 
-	app.POST("/data", func(c echo.Context, req TestUser) (TestUser, error) {
+	app.POST("/data", func(c *echo.Context, req TestUser) (TestUser, error) {
 		return req, nil
 	}, echonext.Route{
 		Security: []echonext.SecurityRequirement{
@@ -779,7 +779,7 @@ func TestOpenIDConnectRouteWithScopes(t *testing.T) {
 		OpenIDConnectURL: "https://auth.example.com/.well-known/openid-configuration",
 	})
 
-	app.GET("/profile", func(c echo.Context) (map[string]string, error) {
+	app.GET("/profile", func(c *echo.Context) (map[string]string, error) {
 		return map[string]string{"name": "John"}, nil
 	}, echonext.Route{
 		Summary: "Get profile",

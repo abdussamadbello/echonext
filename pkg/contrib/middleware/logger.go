@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/labstack/echo/v5"
@@ -13,7 +14,17 @@ type StructuredLoggerConfig struct {
 	Skipper middleware.Skipper
 
 	// CustomFields allows adding custom fields to log entries
-	CustomFields func(c echo.Context) map[string]interface{}
+	CustomFields func(c *echo.Context) map[string]interface{}
+}
+
+// responseStats extracts status code and bytes written from the Echo response.
+// Echo's Context.Response() returns http.ResponseWriter; the underlying type is
+// *echo.Response, which tracks Status and Size.
+func responseStats(w http.ResponseWriter) (status int, size int64) {
+	if r, ok := w.(*echo.Response); ok {
+		return r.Status, r.Size
+	}
+	return 0, 0
 }
 
 // StructuredLogger returns a middleware that adds structured logging
@@ -24,7 +35,7 @@ func StructuredLogger(config StructuredLoggerConfig) echo.MiddlewareFunc {
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			if config.Skipper(c) {
 				return next(c)
 			}
@@ -34,17 +45,17 @@ func StructuredLogger(config StructuredLoggerConfig) echo.MiddlewareFunc {
 			stop := time.Now()
 
 			req := c.Request()
-			res := c.Response()
+			status, size := responseStats(c.Response())
 
 			// Build log fields
 			fields := map[string]interface{}{
 				"time":       stop.Format(time.RFC3339),
 				"method":     req.Method,
 				"uri":        req.RequestURI,
-				"status":     res.Status,
+				"status":     status,
 				"latency_ms": stop.Sub(start).Milliseconds(),
 				"bytes_in":   req.ContentLength,
-				"bytes_out":  res.Size,
+				"bytes_out":  size,
 			}
 
 			// Add request ID if available
@@ -59,13 +70,20 @@ func StructuredLogger(config StructuredLoggerConfig) echo.MiddlewareFunc {
 				}
 			}
 
-			// Log based on status code
-			if res.Status >= 500 {
-				c.Logger().Errorj(fields)
-			} else if res.Status >= 400 {
-				c.Logger().Warnj(fields)
-			} else {
-				c.Logger().Infoj(fields)
+			// Convert map to slog attrs
+			attrs := make([]any, 0, len(fields)*2)
+			for k, v := range fields {
+				attrs = append(attrs, k, v)
+			}
+
+			logger := c.Logger()
+			switch {
+			case status >= 500:
+				logger.Error("request", attrs...)
+			case status >= 400:
+				logger.Warn("request", attrs...)
+			default:
+				logger.Info("request", attrs...)
 			}
 
 			return err

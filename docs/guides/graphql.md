@@ -172,7 +172,7 @@ func main() {
     // Add JWT middleware
     app.Use(middleware.JWTWithConfig(middleware.JWTConfig{
         SigningKey: []byte("secret"),
-        Skipper: func(c echo.Context) bool {
+        Skipper: func(c *echo.Context) bool {
             // Skip auth for playground
             return c.Path() == "/playground"
         },

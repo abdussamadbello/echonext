@@ -420,13 +420,13 @@ func setupTestApp() (*echonext.App, *gorm.DB) {
     db := setupTestDB()
 
     // Register routes
-    app.GET("/users", func(c echo.Context) ([]User, error) {
+    app.GET("/users", func(c *echo.Context) ([]User, error) {
         var users []User
         db.Find(&users)
         return users, nil
     })
 
-    app.POST("/users", func(c echo.Context, req CreateUserRequest) (User, error) {
+    app.POST("/users", func(c *echo.Context, req CreateUserRequest) (User, error) {
         user := User{Name: req.Name, Email: req.Email}
         db.Create(&user)
         return user, nil

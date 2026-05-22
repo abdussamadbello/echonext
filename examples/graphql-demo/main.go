@@ -44,7 +44,7 @@ func main() {
 	})
 
 	// Add REST endpoints alongside GraphQL
-	app.GET("/health", func(c echo.Context) (map[string]string, error) {
+	app.GET("/health", func(c *echo.Context) (map[string]string, error) {
 		return map[string]string{"status": "healthy"}, nil
 	}, echonext.Route{
 		Summary: "Health check",

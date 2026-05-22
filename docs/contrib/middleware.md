@@ -24,7 +24,7 @@ app := echonext.New()
 app.Use(middleware.RequestID())
 
 // Access in handlers
-func handler(c echo.Context) error {
+func handler(c *echo.Context) error {
     requestID := middleware.GetRequestID(c)
     log.Printf("Processing request %s", requestID)
     return c.JSON(200, map[string]string{"request_id": requestID})
@@ -62,7 +62,7 @@ Enhanced logging with custom fields:
 
 ```go
 app.Use(middleware.StructuredLogger(middleware.StructuredLoggerConfig{
-    CustomFields: func(c echo.Context) map[string]interface{} {
+    CustomFields: func(c *echo.Context) map[string]interface{} {
         return map[string]interface{}{
             "request_id": middleware.GetRequestID(c),
             "user_agent": c.Request().UserAgent(),
@@ -125,7 +125,7 @@ tracedClient := middleware.NewTracedHTTPClient(
     middleware.WithClientTimeout(30 * time.Second),
 )
 
-func handler(c echo.Context) error {
+func handler(c *echo.Context) error {
     ctx := c.Request().Context()
     
     // Make traced outgoing request
@@ -160,7 +160,7 @@ export OTEL_ENABLE_METRICS="true"
 Access trace information in handlers:
 
 ```go
-func handler(c echo.Context) error {
+func handler(c *echo.Context) error {
     // Get trace context
     traceID := middleware.GetTraceID(c)
     spanID := middleware.GetSpanID(c)
@@ -211,7 +211,7 @@ app.GET("/metrics", middleware.MetricsHandler(metrics))
 
 // Structured logging
 app.Use(middleware.StructuredLogger(middleware.StructuredLoggerConfig{
-    CustomFields: func(c echo.Context) map[string]interface{} {
+    CustomFields: func(c *echo.Context) map[string]interface{} {
         return map[string]interface{}{
             "trace_id":   middleware.GetTraceID(c),
             "request_id": middleware.GetRequestID(c),
@@ -227,7 +227,7 @@ Create your own middleware following Echo's pattern:
 ```go
 func AuthMiddleware(apiKey string) echo.MiddlewareFunc {
     return func(next echo.HandlerFunc) echo.HandlerFunc {
-        return func(c echo.Context) error {
+        return func(c *echo.Context) error {
             key := c.Request().Header.Get("X-API-Key")
             if key != apiKey {
                 return echo.NewHTTPError(401, "invalid API key")

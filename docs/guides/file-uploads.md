@@ -21,7 +21,7 @@ type AvatarResponse struct {
     Size     int64  `json:"size"`
 }
 
-func uploadAvatar(c echo.Context, req AvatarRequest) (AvatarResponse, error) {
+func uploadAvatar(c *echo.Context, req AvatarRequest) (AvatarResponse, error) {
     // Access file metadata
     fmt.Printf("Filename: %s\n", req.File.Filename)
     fmt.Printf("Size: %d bytes\n", req.File.Size)
@@ -83,7 +83,7 @@ type DocumentsResponse struct {
     Files    []string `json:"files"`
 }
 
-func uploadDocuments(c echo.Context, req DocumentsRequest) (DocumentsResponse, error) {
+func uploadDocuments(c *echo.Context, req DocumentsRequest) (DocumentsResponse, error) {
     var filenames []string
 
     for _, file := range req.Files {
@@ -156,7 +156,7 @@ type ProfileResponse struct {
     AvatarURL string `json:"avatar_url,omitempty"`
 }
 
-func updateProfile(c echo.Context, req ProfileUpdateRequest) (ProfileResponse, error) {
+func updateProfile(c *echo.Context, req ProfileUpdateRequest) (ProfileResponse, error) {
     response := ProfileResponse{
         Name: req.Name,
         Bio:  req.Bio,
@@ -186,7 +186,7 @@ import (
     _ "image/png"
 )
 
-func uploadAndResize(c echo.Context, req AvatarRequest) (AvatarResponse, error) {
+func uploadAndResize(c *echo.Context, req AvatarRequest) (AvatarResponse, error) {
     // Open the uploaded file
     src, err := req.File.Open()
     if err != nil {
@@ -279,7 +279,7 @@ internal/upload/avatar/
 ## Error Handling
 
 ```go
-func uploadWithErrors(c echo.Context, req AvatarRequest) (AvatarResponse, error) {
+func uploadWithErrors(c *echo.Context, req AvatarRequest) (AvatarResponse, error) {
     // Check file size
     if req.File.Size > 5<<20 { // 5MB
         return AvatarResponse{}, echo.NewHTTPError(400, "File too large (max 5MB)")

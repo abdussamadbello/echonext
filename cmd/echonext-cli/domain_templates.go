@@ -307,7 +307,7 @@ func (h *Handler) RegisterRoutes(app *echonext.App) {
 }
 
 // Create handles POST /users
-func (h *Handler) Create(c echo.Context, req CreateUserRequest) (UserResponse, error) {
+func (h *Handler) Create(c *echo.Context, req CreateUserRequest) (UserResponse, error) {
 	user, err := h.service.Create(c.Request().Context(), req)
 	if err != nil {
 		return UserResponse{}, echo.NewHTTPError(400, err.Error())
@@ -323,7 +323,7 @@ func (h *Handler) Create(c echo.Context, req CreateUserRequest) (UserResponse, e
 }
 
 // List handles GET /users
-func (h *Handler) List(c echo.Context, req ListUsersRequest) (ListUsersResponse, error) {
+func (h *Handler) List(c *echo.Context, req ListUsersRequest) (ListUsersResponse, error) {
 	// Set defaults
 	if req.Page == 0 {
 		req.Page = 1
@@ -341,7 +341,7 @@ func (h *Handler) List(c echo.Context, req ListUsersRequest) (ListUsersResponse,
 }
 
 // GetByID handles GET /users/:id
-func (h *Handler) GetByID(c echo.Context) (UserResponse, error) {
+func (h *Handler) GetByID(c *echo.Context) (UserResponse, error) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
@@ -363,7 +363,7 @@ func (h *Handler) GetByID(c echo.Context) (UserResponse, error) {
 }
 
 // Update handles PUT /users/:id
-func (h *Handler) Update(c echo.Context, req UpdateUserRequest) (UserResponse, error) {
+func (h *Handler) Update(c *echo.Context, req UpdateUserRequest) (UserResponse, error) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
@@ -385,7 +385,7 @@ func (h *Handler) Update(c echo.Context, req UpdateUserRequest) (UserResponse, e
 }
 
 // Delete handles DELETE /users/:id
-func (h *Handler) Delete(c echo.Context) error {
+func (h *Handler) Delete(c *echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {

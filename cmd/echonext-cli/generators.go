@@ -196,7 +196,7 @@ func (h *Handler) RegisterRoutes(app *echonext.App) {
 }
 
 // Create handles creating a new %s
-func (h *Handler) Create(c echo.Context, req Create%sRequest) (%sResponse, error) {
+func (h *Handler) Create(c *echo.Context, req Create%sRequest) (%sResponse, error) {
 	// TODO: Map request to model
 	%s := &%s{
 		// Map fields from req
@@ -210,7 +210,7 @@ func (h *Handler) Create(c echo.Context, req Create%sRequest) (%sResponse, error
 }
 
 // Get handles retrieving a %s by ID
-func (h *Handler) Get(c echo.Context) (%sResponse, error) {
+func (h *Handler) Get(c *echo.Context) (%sResponse, error) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		return %sResponse{}, echo.NewHTTPError(http.StatusBadRequest, "invalid ID")
@@ -225,7 +225,7 @@ func (h *Handler) Get(c echo.Context) (%sResponse, error) {
 }
 
 // List handles listing %s
-func (h *Handler) List(c echo.Context, req List%sRequest) (List%sResponse, error) {
+func (h *Handler) List(c *echo.Context, req List%sRequest) (List%sResponse, error) {
 	%s, err := h.service.List(req.Limit, req.Offset)
 	if err != nil {
 		return List%sResponse{}, echo.NewHTTPError(http.StatusInternalServerError, err.Error())
@@ -247,7 +247,7 @@ func (h *Handler) List(c echo.Context, req List%sRequest) (List%sResponse, error
 }
 
 // Update handles updating a %s
-func (h *Handler) Update(c echo.Context, req Update%sRequest) (%sResponse, error) {
+func (h *Handler) Update(c *echo.Context, req Update%sRequest) (%sResponse, error) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		return %sResponse{}, echo.NewHTTPError(http.StatusBadRequest, "invalid ID")
@@ -269,7 +269,7 @@ func (h *Handler) Update(c echo.Context, req Update%sRequest) (%sResponse, error
 }
 
 // Delete handles deleting a %s
-func (h *Handler) Delete(c echo.Context) error {
+func (h *Handler) Delete(c *echo.Context) error {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid ID")
@@ -382,7 +382,7 @@ import (
 // %s is a custom middleware for %s
 func %s() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			// TODO: Implement your middleware logic here
 
 			// Example: Add a custom header
@@ -403,7 +403,7 @@ type %sConfig struct {
 // %sWithConfig returns a %s middleware with custom configuration
 func %sWithConfig(config %sConfig) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			// TODO: Implement your middleware logic with config
 
 			return next(c)
