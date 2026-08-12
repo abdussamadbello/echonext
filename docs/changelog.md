@@ -5,6 +5,46 @@ All notable changes to EchoNext will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-08-12
+
+### Changed
+
+#### Echo v5 and Go 1.26
+- ⚠️ **Breaking:** handlers now take `*echo.Context` instead of `echo.Context`
+- ⚠️ **Breaking:** requires Go 1.26 or newer
+- ✅ Upgraded to Echo v5.3.1
+
+#### Dependency upgrades
+- ✅ kin-openapi v0.120.0 → v0.146.0
+- ✅ go-playground/validator v10.16.0 → v10.30.3
+- ✅ OpenTelemetry v1.38.0 → v1.45.0 (otelhttp contrib v0.63.0 → v0.70.0)
+- ✅ gqlgen v0.17.85 → v0.17.94, gqlparser v2.5.31 → v2.5.36
+- ✅ cobra v1.8.0 → v1.10.2, gorm v1.31.1 → v1.31.2, grpc v1.77.0 → v1.83.0,
+  fsnotify v1.9.0 → v1.10.1
+
+### Fixed
+
+#### CLI scaffolding
+- ✅ Scaffolded projects failed to compile because the template files were
+  missed by the Echo v5 migration:
+  - `middleware.Logger()` no longer exists in Echo v5, replaced with
+    `middleware.RequestLogger()`
+  - handler templates emitted `echo.Context` instead of `*echo.Context`
+  - the generated domain test used `fmt.Errorf` without importing `fmt`,
+    which `go build` does not catch because it skips test files
+- ✅ Scaffolded `go.mod` and Dockerfiles now track the framework's Go and
+  dependency versions
+
+#### Example modules
+- ✅ `graphql-demo`, `upload-demo` and `websocket-demo` declared Go 1.24 while
+  the framework required Go 1.26, leaving them unbuildable
+
+### Internal
+- ✅ gqlgen v0.17.94 drops its built-in gorilla WebSocket upgrader; the GraphQL
+  `Config.WebSocketUpgrader` API is unchanged, backed by an internal adapter
+- ✅ Added a test asserting the serialized OpenAPI JSON, since kin-openapi now
+  models a schema's type as a list and could silently emit `["string"]`
+
 ## [1.4.0] - 2024-12-29
 
 ### Added
