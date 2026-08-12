@@ -31,7 +31,7 @@ var Config = upload.Config{
 var UploadDir = "uploads/{{ .Name }}"
 
 // Handler handles {{ .Name }} file uploads
-func Handler(c echo.Context, req UploadRequest) (UploadResponse, error) {
+func Handler(c *echo.Context, req UploadRequest) (UploadResponse, error) {
 	// Ensure upload directory exists
 	if err := os.MkdirAll(UploadDir, 0755); err != nil {
 		return UploadResponse{}, echo.NewHTTPError(500, "Failed to create upload directory")
@@ -60,7 +60,7 @@ func Handler(c echo.Context, req UploadRequest) (UploadResponse, error) {
 }
 
 // MultiHandler handles multiple {{ .Name }} file uploads
-func MultiHandler(c echo.Context, req MultiUploadRequest) (MultiUploadResponse, error) {
+func MultiHandler(c *echo.Context, req MultiUploadRequest) (MultiUploadResponse, error) {
 	// Ensure upload directory exists
 	if err := os.MkdirAll(UploadDir, 0755); err != nil {
 		return MultiUploadResponse{}, echo.NewHTTPError(500, "Failed to create upload directory")

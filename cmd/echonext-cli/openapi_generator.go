@@ -250,7 +250,7 @@ func (g *OpenAPIGenerator) GenerateDTOs() ([]string, error) {
 	var dtos []SchemaInfo
 	imports := make(map[string]bool)
 
-	for path, pathItem := range g.Spec.Paths {
+	for path, pathItem := range g.Spec.Paths.Map() {
 		operations := map[string]*openapi3.Operation{
 			"GET":    pathItem.Get,
 			"POST":   pathItem.Post,
@@ -285,7 +285,7 @@ func (g *OpenAPIGenerator) GenerateDTOs() ([]string, error) {
 			}
 
 			// Generate response DTO
-			for statusCode, responseRef := range op.Responses {
+			for statusCode, responseRef := range op.Responses.Map() {
 				if !strings.HasPrefix(statusCode, "2") {
 					continue // Only success responses
 				}
@@ -425,13 +425,13 @@ func (g *OpenAPIGenerator) collectEndpoints() []EndpointInfo {
 
 	// Sort paths for consistent output
 	var paths []string
-	for path := range g.Spec.Paths {
+	for path := range g.Spec.Paths.Map() {
 		paths = append(paths, path)
 	}
 	sort.Strings(paths)
 
 	for _, path := range paths {
-		pathItem := g.Spec.Paths[path]
+		pathItem := g.Spec.Paths.Value(path)
 		operations := map[string]*openapi3.Operation{
 			"GET":    pathItem.Get,
 			"POST":   pathItem.Post,
@@ -492,7 +492,7 @@ func (g *OpenAPIGenerator) collectEndpoints() []EndpointInfo {
 			}
 
 			// Check for response
-			for statusCode := range op.Responses {
+			for statusCode := range op.Responses.Map() {
 				if strings.HasPrefix(statusCode, "2") {
 					endpoint.HasResponse = true
 					endpoint.ResponseType = toPascalCase(operationID) + "Response"
@@ -536,7 +536,7 @@ func (g *OpenAPIGenerator) schemaToType(name string, schema *openapi3.Schema) Sc
 	}
 
 	// Handle object types
-	if schema.Type == "object" || len(schema.Properties) > 0 {
+	if schema.Type.Is("object") || len(schema.Properties) > 0 {
 		info.GoType = "struct"
 
 		// Track required fields
@@ -681,8 +681,10 @@ func openAPITypeToGo(schemaRef *openapi3.SchemaRef) string {
 }
 
 func schemaTypeToGo(schema *openapi3.Schema) string {
-	switch schema.Type {
-	case "string":
+	// kin-openapi models a schema's type as a list (OpenAPI 3.1 allows several),
+	// so match on a single type via Is rather than comparing to a string.
+	switch {
+	case schema.Type.Is("string"):
 		switch schema.Format {
 		case "date-time":
 			return "time.Time"
@@ -695,7 +697,7 @@ func schemaTypeToGo(schema *openapi3.Schema) string {
 		default:
 			return "string"
 		}
-	case "integer":
+	case schema.Type.Is("integer"):
 		switch schema.Format {
 		case "int32":
 			return "int32"
@@ -704,21 +706,21 @@ func schemaTypeToGo(schema *openapi3.Schema) string {
 		default:
 			return "int"
 		}
-	case "number":
+	case schema.Type.Is("number"):
 		switch schema.Format {
 		case "float":
 			return "float32"
 		default:
 			return "float64"
 		}
-	case "boolean":
+	case schema.Type.Is("boolean"):
 		return "bool"
-	case "array":
+	case schema.Type.Is("array"):
 		if schema.Items != nil {
 			return "[]" + openAPITypeToGo(schema.Items)
 		}
 		return "[]interface{}"
-	case "object":
+	case schema.Type.Is("object"):
 		if schema.AdditionalProperties.Schema != nil {
 			return "map[string]" + openAPITypeToGo(schema.AdditionalProperties.Schema)
 		}

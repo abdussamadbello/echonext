@@ -7,7 +7,7 @@ import (
 
 {{ range .Endpoints }}
 // {{ .FuncName }} - {{ .Summary }}
-func {{ .FuncName }}(c echo.Context{{ if .HasRequest }}, req {{ .RequestType }}{{ end }}) ({{ if .HasResponse }}{{ .ResponseType }}, {{ end }}error) {
+func {{ .FuncName }}(c *echo.Context{{ if .HasRequest }}, req {{ .RequestType }}{{ end }}) ({{ if .HasResponse }}{{ .ResponseType }}, {{ end }}error) {
 	// TODO: Implement {{ .FuncName }}
 	{{ if .HasResponse }}return {{ .ResponseType }}{}, nil{{ else }}return nil{{ end }}
 }

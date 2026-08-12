@@ -21,12 +21,12 @@ func New(cfg *config.Config) *echonext.App {
 	)
 
 	// Add middleware
-	app.Use(middleware.Logger())
+	app.Use(middleware.RequestLogger())
 	app.Use(middleware.Recover())
 	app.Use(middleware.CORS())
 
 	// Add health check
-	app.GET("/health", func(c echo.Context) (map[string]interface{}, error) {
+	app.GET("/health", func(c *echo.Context) (map[string]interface{}, error) {
 		return map[string]interface{}{
 			"status":      "healthy",
 			"service":     cfg.App.Name,
