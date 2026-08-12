@@ -144,7 +144,7 @@ func New() *App {
 			Title:   "API",
 			Version: "1.0.0",
 		},
-		Paths: openapi3.Paths{},
+		Paths: openapi3.NewPaths(),
 		Components: &openapi3.Components{
 			Schemas: openapi3.Schemas{},
 		},
@@ -905,15 +905,17 @@ func (app *App) addRouteToSpec(route RouteInfo) {
 	}
 	path = strings.Join(parts, "/")
 
-	if app.spec.Paths[path] == nil {
-		app.spec.Paths[path] = &openapi3.PathItem{}
+	pathItem := app.spec.Paths.Value(path)
+	if pathItem == nil {
+		pathItem = &openapi3.PathItem{}
+		app.spec.Paths.Set(path, pathItem)
 	}
 
 	operation := &openapi3.Operation{
 		Summary:     route.Summary,
 		Description: route.Description,
 		Tags:        route.Tags,
-		Responses:   openapi3.Responses{},
+		Responses:   openapi3.NewResponses(),
 		Parameters:  openapi3.Parameters{},
 		Security:    &openapi3.SecurityRequirements{},
 	}
@@ -937,7 +939,7 @@ func (app *App) addRouteToSpec(route RouteInfo) {
 				In:       "path",
 				Required: true,
 				Schema: &openapi3.SchemaRef{
-					Value: &openapi3.Schema{Type: "string"},
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
 				},
 			}
 			operation.Parameters = append(operation.Parameters, &openapi3.ParameterRef{Value: param})
@@ -957,7 +959,7 @@ func (app *App) addRouteToSpec(route RouteInfo) {
 				Required:    headerInfo.Required,
 				Description: headerInfo.Description,
 				Schema: &openapi3.SchemaRef{
-					Value: &openapi3.Schema{Type: schemaType},
+					Value: &openapi3.Schema{Type: &openapi3.Types{schemaType}},
 				},
 			}
 			operation.Parameters = append(operation.Parameters, &openapi3.ParameterRef{Value: param})
@@ -1032,16 +1034,16 @@ func (app *App) addRouteToSpec(route RouteInfo) {
 	if route.ResponseType != nil {
 		schema := app.generateSchema(route.ResponseType)
 		responseSchema := &openapi3.Schema{
-			Type: "object",
+			Type: &openapi3.Types{"object"},
 			Properties: openapi3.Schemas{
 				"success": &openapi3.SchemaRef{
-					Value: &openapi3.Schema{Type: "boolean"},
+					Value: &openapi3.Schema{Type: &openapi3.Types{"boolean"}},
 				},
 				"data": &openapi3.SchemaRef{
 					Value: schema,
 				},
 				"error": &openapi3.SchemaRef{
-					Value: &openapi3.Schema{Type: "string"},
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
 				},
 			},
 		}
@@ -1074,7 +1076,7 @@ func (app *App) addRouteToSpec(route RouteInfo) {
 						Parameter: openapi3.Parameter{
 							Description: headerInfo.Description,
 							Schema: &openapi3.SchemaRef{
-								Value: &openapi3.Schema{Type: schemaType},
+								Value: &openapi3.Schema{Type: &openapi3.Types{schemaType}},
 							},
 						},
 					},
@@ -1082,23 +1084,23 @@ func (app *App) addRouteToSpec(route RouteInfo) {
 			}
 		}
 
-		operation.Responses[successStatus] = &openapi3.ResponseRef{Value: response}
+		operation.Responses.Set(successStatus, &openapi3.ResponseRef{Value: response})
 	}
 
 	// Add error responses
 	errorSchema := &openapi3.Schema{
-		Type: "object",
+		Type: &openapi3.Types{"object"},
 		Properties: openapi3.Schemas{
 			"success": &openapi3.SchemaRef{
-				Value: &openapi3.Schema{Type: "boolean", Default: false},
+				Value: &openapi3.Schema{Type: &openapi3.Types{"boolean"}, Default: false},
 			},
 			"error": &openapi3.SchemaRef{
-				Value: &openapi3.Schema{Type: "string"},
+				Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
 			},
 		},
 	}
 
-	operation.Responses["400"] = &openapi3.ResponseRef{
+	operation.Responses.Set("400", &openapi3.ResponseRef{
 		Value: &openapi3.Response{
 			Description: strPtr("Bad request"),
 			Content: openapi3.Content{
@@ -1107,9 +1109,9 @@ func (app *App) addRouteToSpec(route RouteInfo) {
 				},
 			},
 		},
-	}
+	})
 
-	operation.Responses["500"] = &openapi3.ResponseRef{
+	operation.Responses.Set("500", &openapi3.ResponseRef{
 		Value: &openapi3.Response{
 			Description: strPtr("Internal server error"),
 			Content: openapi3.Content{
@@ -1118,20 +1120,20 @@ func (app *App) addRouteToSpec(route RouteInfo) {
 				},
 			},
 		},
-	}
+	})
 
 	// Set operation on the path
 	switch route.Method {
 	case "GET":
-		app.spec.Paths[path].Get = operation
+		pathItem.Get = operation
 	case "POST":
-		app.spec.Paths[path].Post = operation
+		pathItem.Post = operation
 	case "PUT":
-		app.spec.Paths[path].Put = operation
+		pathItem.Put = operation
 	case "PATCH":
-		app.spec.Paths[path].Patch = operation
+		pathItem.Patch = operation
 	case "DELETE":
-		app.spec.Paths[path].Delete = operation
+		pathItem.Delete = operation
 	}
 }
 
@@ -1186,7 +1188,7 @@ func (app *App) generateSchemaWithVisited(t reflect.Type, visited map[reflect.Ty
 	if visited[t] {
 		// Return a simple reference to avoid infinite recursion
 		return &openapi3.Schema{
-			Type:        "object",
+			Type:        &openapi3.Types{"object"},
 			Description: fmt.Sprintf("Circular reference to %s", t.String()),
 		}
 	}
@@ -1199,21 +1201,21 @@ func (app *App) generateSchemaWithVisited(t reflect.Type, visited map[reflect.Ty
 
 	switch t.Kind() {
 	case reflect.String:
-		return &openapi3.Schema{Type: "string"}
+		return &openapi3.Schema{Type: &openapi3.Types{"string"}}
 	case reflect.Int, reflect.Int32, reflect.Int64:
-		return &openapi3.Schema{Type: "integer"}
+		return &openapi3.Schema{Type: &openapi3.Types{"integer"}}
 	case reflect.Float32, reflect.Float64:
-		return &openapi3.Schema{Type: "number"}
+		return &openapi3.Schema{Type: &openapi3.Types{"number"}}
 	case reflect.Bool:
-		return &openapi3.Schema{Type: "boolean"}
+		return &openapi3.Schema{Type: &openapi3.Types{"boolean"}}
 	case reflect.Slice:
 		return &openapi3.Schema{
-			Type:  "array",
+			Type:  &openapi3.Types{"array"},
 			Items: &openapi3.SchemaRef{Value: app.generateSchemaWithVisited(t.Elem(), visited)},
 		}
 	case reflect.Map:
 		return &openapi3.Schema{
-			Type: "object",
+			Type: &openapi3.Types{"object"},
 			AdditionalProperties: openapi3.AdditionalProperties{
 				Schema: &openapi3.SchemaRef{Value: app.generateSchemaWithVisited(t.Elem(), visited)},
 			},
@@ -1221,20 +1223,20 @@ func (app *App) generateSchemaWithVisited(t reflect.Type, visited map[reflect.Ty
 	case reflect.Struct:
 		// Handle time.Time specially
 		if t.String() == "time.Time" {
-			return &openapi3.Schema{Type: "string", Format: "date-time"}
+			return &openapi3.Schema{Type: &openapi3.Types{"string"}, Format: "date-time"}
 		}
 
 		// Handle upload.File specially - represents a binary file
 		if t.Name() == "File" && strings.HasSuffix(t.PkgPath(), "echonext/upload") {
 			return &openapi3.Schema{
-				Type:        "string",
+				Type:        &openapi3.Types{"string"},
 				Format:      "binary",
 				Description: "File upload",
 			}
 		}
 
 		schema := &openapi3.Schema{
-			Type:       "object",
+			Type:       &openapi3.Types{"object"},
 			Properties: openapi3.Schemas{},
 			Required:   []string{},
 		}
@@ -1276,11 +1278,11 @@ func (app *App) generateSchemaWithVisited(t reflect.Type, visited map[reflect.Ty
 				for _, v := range validations {
 					if strings.HasPrefix(v, "min=") {
 						if val := strings.TrimPrefix(v, "min="); val != "" {
-							if fieldSchema.Type == "string" {
+							if fieldSchema.Type.Is("string") {
 								if minLen, err := strconv.Atoi(val); err == nil {
 									fieldSchema.MinLength = uint64(minLen)
 								}
-							} else if fieldSchema.Type == "integer" || fieldSchema.Type == "number" {
+							} else if fieldSchema.Type.Is("integer") || fieldSchema.Type.Is("number") {
 								if min, err := strconv.ParseFloat(val, 64); err == nil {
 									fieldSchema.Min = &min
 								}
@@ -1289,12 +1291,12 @@ func (app *App) generateSchemaWithVisited(t reflect.Type, visited map[reflect.Ty
 					}
 					if strings.HasPrefix(v, "max=") {
 						if val := strings.TrimPrefix(v, "max="); val != "" {
-							if fieldSchema.Type == "string" {
+							if fieldSchema.Type.Is("string") {
 								if maxLen, err := strconv.Atoi(val); err == nil {
 									maxLenValue := uint64(maxLen)
 									fieldSchema.MaxLength = &maxLenValue
 								}
-							} else if fieldSchema.Type == "integer" || fieldSchema.Type == "number" {
+							} else if fieldSchema.Type.Is("integer") || fieldSchema.Type.Is("number") {
 								if max, err := strconv.ParseFloat(val, 64); err == nil {
 									fieldSchema.Max = &max
 								}
@@ -1320,7 +1322,7 @@ func (app *App) generateSchemaWithVisited(t reflect.Type, visited map[reflect.Ty
 
 		return schema
 	default:
-		return &openapi3.Schema{Type: "object"}
+		return &openapi3.Schema{Type: &openapi3.Types{"object"}}
 	}
 }
 
@@ -1331,11 +1333,11 @@ func (app *App) generateMultipartSchema(t reflect.Type) *openapi3.Schema {
 	}
 
 	if t.Kind() != reflect.Struct {
-		return &openapi3.Schema{Type: "object"}
+		return &openapi3.Schema{Type: &openapi3.Types{"object"}}
 	}
 
 	schema := &openapi3.Schema{
-		Type:       "object",
+		Type:       &openapi3.Types{"object"},
 		Properties: openapi3.Schemas{},
 		Required:   []string{},
 	}
@@ -1363,16 +1365,16 @@ func (app *App) generateMultipartSchema(t reflect.Type) *openapi3.Schema {
 		// Check if this is an upload.File field
 		if upload.IsFileType(field.Type) {
 			fieldSchema = &openapi3.Schema{
-				Type:        "string",
+				Type:        &openapi3.Types{"string"},
 				Format:      "binary",
 				Description: "File upload",
 			}
 		} else if upload.IsFileSliceType(field.Type) {
 			fieldSchema = &openapi3.Schema{
-				Type: "array",
+				Type: &openapi3.Types{"array"},
 				Items: &openapi3.SchemaRef{
 					Value: &openapi3.Schema{
-						Type:        "string",
+						Type:        &openapi3.Types{"string"},
 						Format:      "binary",
 						Description: "File upload",
 					},

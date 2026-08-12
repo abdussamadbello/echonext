@@ -139,16 +139,16 @@ func TestOpenAPIGeneration(t *testing.T) {
 	assert.Equal(t, "1.0.0", spec.Info.Version)
 
 	// Check paths
-	assert.NotNil(t, spec.Paths["/users"])
-	assert.NotNil(t, spec.Paths["/users"].Get)
-	assert.NotNil(t, spec.Paths["/users"].Post)
+	assert.NotNil(t, spec.Paths.Value("/users"))
+	assert.NotNil(t, spec.Paths.Value("/users").Get)
+	assert.NotNil(t, spec.Paths.Value("/users").Post)
 
 	// Check operation details
-	assert.Equal(t, "List users", spec.Paths["/users"].Get.Summary)
-	assert.Equal(t, []string{"Users"}, spec.Paths["/users"].Get.Tags)
+	assert.Equal(t, "List users", spec.Paths.Value("/users").Get.Summary)
+	assert.Equal(t, []string{"Users"}, spec.Paths.Value("/users").Get.Tags)
 
 	// Check request body for POST
-	assert.NotNil(t, spec.Paths["/users"].Post.RequestBody)
+	assert.NotNil(t, spec.Paths.Value("/users").Post.RequestBody)
 }
 
 func TestQueryParameters(t *testing.T) {
@@ -394,8 +394,8 @@ func TestAdvancedOpenAPIFeatures(t *testing.T) {
 	assert.Contains(t, spec.Components.SecuritySchemes, "apiKey")
 
 	// Test route features
-	assert.NotNil(t, spec.Paths["/advanced"])
-	post := spec.Paths["/advanced"].Post
+	assert.NotNil(t, spec.Paths.Value("/advanced"))
+	post := spec.Paths.Value("/advanced").Post
 	assert.NotNil(t, post)
 
 	// Test security requirements
@@ -403,8 +403,8 @@ func TestAdvancedOpenAPIFeatures(t *testing.T) {
 	assert.Greater(t, len(*post.Security), 0)
 
 	// Test response status
-	assert.Contains(t, post.Responses, "201")
-	assert.NotContains(t, post.Responses, "200")
+	assert.Contains(t, post.Responses.Map(), "201")
+	assert.NotContains(t, post.Responses.Map(), "200")
 
 	// Test request body examples
 	assert.NotNil(t, post.RequestBody)
@@ -606,7 +606,7 @@ func TestGlobalSecurityAppliedToRoutes(t *testing.T) {
 	assert.Len(t, spec.Security, 1)
 
 	// Route should inherit global security
-	secReqs := *spec.Paths["/users"].Get.Security
+	secReqs := *spec.Paths.Value("/users").Get.Security
 	assert.Len(t, secReqs, 1)
 	assert.Contains(t, secReqs[0], "bearerAuth")
 }
@@ -629,7 +629,7 @@ func TestGlobalSecurityOverriddenByRoute(t *testing.T) {
 	})
 
 	spec := app.GenerateOpenAPISpec()
-	secReqs := *spec.Paths["/admin"].Post.Security
+	secReqs := *spec.Paths.Value("/admin").Post.Security
 
 	// Should have route-specific security, not global
 	assert.Len(t, secReqs, 1)
@@ -650,7 +650,7 @@ func TestGlobalSecurityDisabledForRoute(t *testing.T) {
 	})
 
 	spec := app.GenerateOpenAPISpec()
-	secReqs := spec.Paths["/health"].Get.Security
+	secReqs := spec.Paths.Value("/health").Get.Security
 
 	// Should have empty security (public endpoint)
 	assert.NotNil(t, secReqs)
@@ -700,7 +700,7 @@ func TestRouteReferencesSchemeByName(t *testing.T) {
 	})
 
 	spec := app.GenerateOpenAPISpec()
-	secReqs := *spec.Paths["/protected"].Get.Security
+	secReqs := *spec.Paths.Value("/protected").Get.Security
 
 	assert.Len(t, secReqs, 1)
 	assert.Contains(t, secReqs[0], "custom-jwt")
@@ -754,7 +754,7 @@ func TestMultipleSecurityRequirementsWithScopes(t *testing.T) {
 	})
 
 	spec := app.GenerateOpenAPISpec()
-	secReqs := *spec.Paths["/data"].Post.Security
+	secReqs := *spec.Paths.Value("/data").Post.Security
 
 	assert.Len(t, secReqs, 2)
 	assert.Equal(t, []string{"write"}, secReqs[0]["oauth2"])
@@ -789,7 +789,7 @@ func TestOpenIDConnectRouteWithScopes(t *testing.T) {
 	})
 
 	spec := app.GenerateOpenAPISpec()
-	secReqs := *spec.Paths["/profile"].Get.Security
+	secReqs := *spec.Paths.Value("/profile").Get.Security
 
 	assert.Len(t, secReqs, 1)
 	assert.Contains(t, secReqs[0], "oidc")
