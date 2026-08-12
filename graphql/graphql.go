@@ -162,7 +162,9 @@ func Handler(config Config) *handler.Server {
 	// Add WebSocket transport for subscriptions
 	if config.WebSocketUpgrader != nil {
 		srv.AddTransport(&transport.Websocket{
-			Upgrader: *config.WebSocketUpgrader,
+			Implementation: gorillaWebsocketImplementation{
+				upgrader: *config.WebSocketUpgrader,
+			},
 		})
 	}
 
@@ -199,11 +201,13 @@ func Handler(config Config) *handler.Server {
 func SubscriptionHandler(schema graphql.ExecutableSchema) *handler.Server {
 	srv := handler.New(schema)
 	srv.AddTransport(&transport.Websocket{
-		Upgrader: websocket.Upgrader{
-			ReadBufferSize:  1024,
-			WriteBufferSize: 1024,
-			CheckOrigin: func(r *http.Request) bool {
-				return true
+		Implementation: gorillaWebsocketImplementation{
+			upgrader: websocket.Upgrader{
+				ReadBufferSize:  1024,
+				WriteBufferSize: 1024,
+				CheckOrigin: func(r *http.Request) bool {
+					return true
+				},
 			},
 		},
 	})
