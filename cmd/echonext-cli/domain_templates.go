@@ -452,6 +452,7 @@ func (g *ProjectGenerator) generateUserTest() string {
 
 import (
 	"context"
+	"fmt"
 	"testing"
 )
 

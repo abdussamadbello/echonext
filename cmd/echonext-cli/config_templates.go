@@ -130,7 +130,7 @@ volumes:
 // generateDockerfileAPI creates Dockerfile for API server
 func (g *ProjectGenerator) generateDockerfileAPI() string {
 	return fmt.Sprintf(`# Build stage
-FROM golang:1.24-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
@@ -179,7 +179,7 @@ CMD ["./api"]
 // generateDockerfileWorker creates Dockerfile for background worker
 func (g *ProjectGenerator) generateDockerfileWorker() string {
 	return fmt.Sprintf(`# Build stage
-FROM golang:1.24-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
