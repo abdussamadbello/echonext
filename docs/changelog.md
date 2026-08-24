@@ -5,7 +5,22 @@ All notable changes to EchoNext will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.5.0] - 2026-08-12
+## [1.5.0] - 2026-08-25
+
+### Added
+
+#### Agent Skills
+- ✅ Eight portable [Agent Skills](../skills/README.md) under `skills/`, so AI
+  coding agents can build with EchoNext without rediscovering the conventions:
+  `echonext-handlers`, `echonext-domain`, `echonext-cli`,
+  `echonext-openapi-security`, `echonext-database`, `echonext-testing`,
+  `echonext-integrations` and `echonext-middleware-config`
+- ✅ `echonext-middleware-config` covers middleware registration and ordering,
+  the Echo/contrib/project `middleware` package collision, writing a custom
+  `echo.MiddlewareFunc`, and loading config with `pkg/contrib/config`
+- ✅ Skills are plain `SKILL.md` directories, discovered by Claude Code through
+  `.claude/skills/` symlinks and loadable by any harness that reads the format
+- ✅ `skills/scripts/validate_skills.py` validates frontmatter and references
 
 ### Changed
 
@@ -25,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 #### CLI scaffolding
+- ✅ Scaffolded projects panicked on startup: Echo v5's `middleware.CORS()`
+  requires at least one allowed origin, where v4 defaulted to `*`. The
+  generated `internal/server/server.go` now calls `middleware.CORS("*")` with
+  a comment to narrow it before deploying
 - ✅ Scaffolded projects failed to compile because the template files were
   missed by the Echo v5 migration:
   - `middleware.Logger()` no longer exists in Echo v5, replaced with
@@ -34,6 +53,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     which `go build` does not catch because it skips test files
 - ✅ Scaffolded `go.mod` and Dockerfiles now track the framework's Go and
   dependency versions
+
+#### Documentation
+- ✅ README, FAQ, quickstart, concepts, troubleshooting, the API development
+  guide and the contrib middleware docs still used Echo v4 middleware names —
+  `middleware.Logger()` (now `RequestLogger()`) and the bare
+  `middleware.CORS()` that panics under v5
+- ✅ The metrics examples registered `middleware.MetricsHandler` on `app.GET`;
+  it is a raw `echo.HandlerFunc` and belongs on `app.Echo.GET`, otherwise the
+  type-safe router writes a second response and logs
+  `echo: response already written to client`
 
 #### Example modules
 - ✅ `graphql-demo`, `upload-demo` and `websocket-demo` declared Go 1.24 while

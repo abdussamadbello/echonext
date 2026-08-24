@@ -402,7 +402,7 @@ metrics := middleware.NewMetrics()
 app.Use(middleware.MetricsMiddleware(metrics))
 
 // Expose metrics
-app.GET("/metrics", middleware.MetricsHandler(metrics))
+app.Echo.GET("/metrics", middleware.MetricsHandler(metrics))
 ```
 
 ## Logging Integration

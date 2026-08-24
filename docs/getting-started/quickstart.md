@@ -312,9 +312,9 @@ import "github.com/labstack/echo/v5/middleware"
 app := echonext.New()
 
 // Use Echo middleware
-app.Use(middleware.Logger())
+app.Use(middleware.RequestLogger())
 app.Use(middleware.Recover())
-app.Use(middleware.CORS())
+app.Use(middleware.CORS("*"))
 ```
 
 ### Query Parameters

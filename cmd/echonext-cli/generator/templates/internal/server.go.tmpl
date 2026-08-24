@@ -23,7 +23,9 @@ func New(cfg *config.Config) *echonext.App {
 	// Add middleware
 	app.Use(middleware.RequestLogger())
 	app.Use(middleware.Recover())
-	app.Use(middleware.CORS())
+	// Echo v5 requires at least one allowed origin; "*" mirrors Echo v4's
+	// default. Narrow this to your real front-end origins before deploying.
+	app.Use(middleware.CORS("*"))
 
 	// Add health check
 	app.GET("/health", func(c *echo.Context) (map[string]interface{}, error) {

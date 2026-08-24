@@ -28,8 +28,8 @@ Yes, absolutely! EchoNext is fully compatible with all Echo middleware:
 import "github.com/labstack/echo/v5/middleware"
 
 app := echonext.New()
-app.Use(middleware.Logger())
-app.Use(middleware.CORS())
+app.Use(middleware.RequestLogger())
+app.Use(middleware.CORS("*"))
 app.Use(middleware.RateLimiter(...))
 ```
 
@@ -390,7 +390,7 @@ Use Echo's CORS middleware:
 ```go
 import "github.com/labstack/echo/v5/middleware"
 
-app.Use(middleware.CORS())
+app.Use(middleware.CORS("*"))
 ```
 
 Or with custom config:

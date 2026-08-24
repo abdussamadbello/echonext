@@ -47,7 +47,19 @@ metrics := middleware.NewMetrics()
 app.Use(middleware.MetricsMiddleware(metrics))
 
 // Expose metrics endpoint
-app.GET("/metrics", middleware.MetricsHandler(metrics))
+app.Echo.GET("/metrics", middleware.MetricsHandler(metrics))
+```
+
+`MetricsHandler` is a raw `echo.HandlerFunc` that writes its own response, so
+register it on `app.Echo`. Registering it on `app.GET` makes the type-safe
+router try to write a second response and log
+`echo: response already written to client`. To get the metrics into the
+OpenAPI spec instead, wrap the collector in a type-safe handler:
+
+```go
+app.GET("/metrics", func(c *echo.Context) (map[string]interface{}, error) {
+    return metrics.GetMetrics(), nil
+}, echonext.Route{Summary: "Request metrics", Tags: []string{"System"}})
 ```
 
 Metrics collected:
@@ -197,7 +209,7 @@ app := echonext.New()
 
 // Echo built-in middleware
 app.Use(echomw.Recover())
-app.Use(echomw.CORS())
+app.Use(echomw.CORS("*"))
 app.Use(echomw.Gzip())
 
 // EchoNext contrib middleware
@@ -207,7 +219,7 @@ app.Use(middleware.OTELMiddleware("my-service"))
 // Metrics
 metrics := middleware.NewMetrics()
 app.Use(middleware.MetricsMiddleware(metrics))
-app.GET("/metrics", middleware.MetricsHandler(metrics))
+app.Echo.GET("/metrics", middleware.MetricsHandler(metrics))
 
 // Structured logging
 app.Use(middleware.StructuredLogger(middleware.StructuredLoggerConfig{

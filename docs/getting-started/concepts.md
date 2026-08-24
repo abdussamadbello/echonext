@@ -25,7 +25,7 @@ app := echonext.New()
 It wraps `*echo.Echo`, so you have access to all Echo methods:
 
 ```go
-app.Use(middleware.Logger())    // Echo middleware
+app.Use(middleware.RequestLogger())    // Echo middleware
 app.Static("/assets", "public") // Echo static files
 app.Group("/api/v1")           // Echo route groups
 ```
@@ -265,9 +265,9 @@ import "github.com/labstack/echo/v5/middleware"
 app := echonext.New()
 
 // Global middleware
-app.Use(middleware.Logger())
+app.Use(middleware.RequestLogger())
 app.Use(middleware.Recover())
-app.Use(middleware.CORS())
+app.Use(middleware.CORS("*"))
 app.Use(middleware.Gzip())
 
 // Route-specific middleware

@@ -140,7 +140,7 @@ app.Static("/assets", "public")
 app.Echo.GET("/healthz", func(c *echo.Context) error {
     return c.String(http.StatusOK, "ok")
 })
-app.Use(middleware.Logger()) // any Echo middleware
+app.Use(middleware.RequestLogger()) // any Echo middleware
 ```
 
 Note: routes registered via raw Echo are **not** added to the generated

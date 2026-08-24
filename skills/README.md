@@ -20,6 +20,7 @@ that understands the `SKILL.md` convention.
 | [`echonext-database`](echonext-database/SKILL.md) | Working with GORM models, the `Repository[T]` pattern, Atlas migrations, or seeds |
 | [`echonext-testing`](echonext-testing/SKILL.md) | Writing tests with the contrib testing helpers (`APIClient`, `Suite`, fixtures) |
 | [`echonext-integrations`](echonext-integrations/SKILL.md) | Adding WebSocket, GraphQL, or file-upload endpoints |
+| [`echonext-middleware-config`](echonext-middleware-config/SKILL.md) | Registering or writing middleware, or loading configuration from YAML/env |
 
 ## How harnesses discover these
 

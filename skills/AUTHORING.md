@@ -40,6 +40,14 @@ harness that understands the `SKILL.md` convention.
 5. **No harness-specific instructions** in the body. Describe the framework, not
    how a particular agent should behave.
 
+6. **Add the discovery symlink.** A new skill is invisible to Claude Code until
+   it is linked from `.claude/skills/`:
+   ```bash
+   ln -s ../../skills/<name> .claude/skills/<name>
+   ```
+   Also add a row to the tables in [`README.md`](README.md) and the repo root
+   `README.md`.
+
 ## Validating
 
 Run the linter before committing:

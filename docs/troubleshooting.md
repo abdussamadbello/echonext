@@ -197,7 +197,7 @@ app.ServeSwaggerUI("/api/docs", "/api/openapi.json")
 1. **Use middleware before routes:**
 ```go
 app := echonext.New()
-app.Use(middleware.Logger())  // Before routes
+app.Use(middleware.RequestLogger())  // Before routes
 app.GET("/users", handler)
 ```
 
@@ -237,7 +237,7 @@ import "github.com/labstack/echo/v5/middleware"
 app := echonext.New()
 
 // Basic CORS (allows all origins)
-app.Use(middleware.CORS())
+app.Use(middleware.CORS("*"))
 
 // Custom CORS
 app.Use(middleware.CORSWithConfig(middleware.CORSConfig{
@@ -371,7 +371,7 @@ db.Create(order)
 
 1. **Add logging middleware:**
 ```go
-app.Use(middleware.Logger())
+app.Use(middleware.RequestLogger())
 ```
 
 2. **Check database queries:**

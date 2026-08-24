@@ -128,7 +128,7 @@
 //
 //	// Use Echo's built-in middleware
 //	app.Use(echomw.Recover())
-//	app.Use(echomw.CORS())
+//	app.Use(echomw.CORS("*"))
 //
 //	// Add contrib middleware
 //	app.Use(middleware.RequestID())
@@ -138,7 +138,7 @@
 //	app.Use(middleware.MetricsMiddleware(metrics))
 //
 //	// Expose metrics endpoint
-//	app.GET("/metrics", middleware.MetricsHandler(metrics))
+//	app.Echo.GET("/metrics", middleware.MetricsHandler(metrics))
 //
 //	// Use structured logging with request IDs
 //	app.Use(middleware.StructuredLogger(middleware.StructuredLoggerConfig{

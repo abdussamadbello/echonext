@@ -161,9 +161,9 @@ import "github.com/labstack/echo/v5/middleware"
 app := echonext.New()
 
 // All standard Echo middleware works
-app.Use(middleware.Logger())
+app.Use(middleware.RequestLogger())
 app.Use(middleware.Recover())
-app.Use(middleware.CORS())
+app.Use(middleware.CORS("*"))
 app.Use(middleware.Gzip())
 app.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20)))
 app.Use(middleware.BasicAuth(func(username, password string, c *echo.Context) (bool, error) {
@@ -187,8 +187,8 @@ app.Use(middleware.BasicAuth(func(username, password string, c *echo.Context) (b
 app := echonext.New()
 
 // Use Echo middleware
-app.Use(middleware.Logger())
-app.Use(middleware.CORS())
+app.Use(middleware.RequestLogger())
+app.Use(middleware.CORS("*"))
 
 // Create route groups (standard Echo)
 api := app.Group("/api/v1")
@@ -713,6 +713,27 @@ echonext generate domain payment
 Distributed system with service-to-service communication and events.
 
 See [examples/README.md](examples/README.md) for detailed guides and more examples.
+
+## 🤖 Building with AI Agents
+
+EchoNext ships [Agent Skills](skills/README.md) — framework-specific guides in
+the portable `SKILL.md` format that teach a coding agent the conventions it
+would otherwise have to reverse-engineer.
+
+| Skill | Use when… |
+|-------|-----------|
+| `echonext-handlers` | Writing a type-safe handler, request struct, or route |
+| `echonext-domain` | Adding a resource (model + service + handler + DTO) |
+| `echonext-cli` | Scaffolding, the dev loop, builds, database commands |
+| `echonext-openapi-security` | OpenAPI metadata or auth schemes |
+| `echonext-database` | GORM models, `Repository[T]`, Atlas migrations |
+| `echonext-testing` | Tests with `APIClient`, `Suite`, fixtures |
+| `echonext-integrations` | WebSocket, GraphQL, or file-upload endpoints |
+| `echonext-middleware-config` | Middleware registration/authoring, config loading |
+
+Claude Code picks them up automatically from `.claude/skills/` when you work in
+a clone of this repo. For other harnesses, point your skills loader at
+`skills/` — every skill is a directory with a standard `SKILL.md`.
 
 ## Contributing
 

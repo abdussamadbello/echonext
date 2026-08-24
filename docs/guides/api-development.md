@@ -61,9 +61,9 @@ func main() {
     app.SetInfo("My API", "1.0.0", "Production API")
     
     // Add middleware
-    app.Use(middleware.Logger())
+    app.Use(middleware.RequestLogger())
     app.Use(middleware.Recover())
-    app.Use(middleware.CORS())
+    app.Use(middleware.CORS("*"))
     
     // Register domains
     userHandler := user.NewHandler(user.NewService(db))

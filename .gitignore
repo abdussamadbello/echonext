@@ -55,4 +55,7 @@ otel-demo
 docs/_build/
 CLAUDE.md
 .docs/
-.claude/
+.claude/*
+# ...except the skill symlinks, which make skills/ discoverable to Claude Code
+# in a fresh clone. Add one per skills/<name> directory.
+!.claude/skills/
