@@ -1,5 +1,5 @@
 # EchoNext CLI Installer for Windows
-# Run: iwr -useb https://raw.githubusercontent.com/abdussamadbello/echonext/master/install.ps1 | iex
+# Run: iwr -useb https://raw.githubusercontent.com/abdussamadbello/echonext/main/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 
