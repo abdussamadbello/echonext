@@ -17,13 +17,13 @@ The fastest way to install the EchoNext CLI:
 ### Linux / macOS
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/abdussamadbello/echonext/master/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/abdussamadbello/echonext/main/install.sh | bash
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/abdussamadbello/echonext/master/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/abdussamadbello/echonext/main/install.ps1 | iex
 ```
 
 This installs `echonext` to `~/.local/bin` (Unix) or `%LOCALAPPDATA%\bin` (Windows) and automatically configures your PATH.
