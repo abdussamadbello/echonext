@@ -280,6 +280,11 @@ temp/
 /worker
 /cli
 /migration
+
+# Agent skills - installed content is generated; skills-lock.json stays tracked
+# so collaborators can restore it with: npx skills experimental_install
+.agents/
+.claude/skills/
 `
 }
 
