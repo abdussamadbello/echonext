@@ -53,6 +53,7 @@ Use `-s echonext-handlers` for a single skill, or `--all` to install everything 
 | `echonext-middleware-config` | Middleware ordering, custom `echo.MiddlewareFunc`, YAML/env config |
 | `echonext-integrations` | WebSocket hubs, gqlgen GraphQL, multipart file uploads |
 | `echonext-testing` | The `APIClient`, `Suite`, and `FixtureManager` helpers |
+| `echonext-setup` | Installing EchoNext or its skills in a repo, and restoring from `skills-lock.json` |
 
 The skills live in [`skills/`](skills/) and follow the
 [Agent Skills specification](https://agentskills.io/specification).
@@ -766,6 +767,7 @@ would otherwise have to reverse-engineer.
 | `echonext-testing` | Tests with `APIClient`, `Suite`, fixtures |
 | `echonext-integrations` | WebSocket, GraphQL, or file-upload endpoints |
 | `echonext-middleware-config` | Middleware registration/authoring, config loading |
+| `echonext-setup` | Setting up EchoNext or its skills in a repository |
 
 Claude Code picks them up automatically from `.claude/skills/` when you work in
 a clone of this repo. For other harnesses, point your skills loader at
