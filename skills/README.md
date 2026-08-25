@@ -21,6 +21,7 @@ that understands the `SKILL.md` convention.
 | [`echonext-testing`](echonext-testing/SKILL.md) | Writing tests with the contrib testing helpers (`APIClient`, `Suite`, fixtures) |
 | [`echonext-integrations`](echonext-integrations/SKILL.md) | Adding WebSocket, GraphQL, or file-upload endpoints |
 | [`echonext-middleware-config`](echonext-middleware-config/SKILL.md) | Registering or writing middleware, or loading configuration from YAML/env |
+| [`echonext-setup`](echonext-setup/SKILL.md) | Installing EchoNext or its skills in a repo, scoping a global install, or restoring from `skills-lock.json` |
 
 ## How harnesses discover these
 
