@@ -21,6 +21,42 @@ EchoNext is a type-safe wrapper around the Echo web framework that automatically
 go get github.com/abdussamadbello/echonext
 ```
 
+## Agent Skills
+
+EchoNext ships 8 [Agent Skills](https://agentskills.io) that teach AI coding agents the
+framework's conventions — handler signatures, domain layout, OpenAPI configuration, and more.
+
+**Any agent:**
+
+```bash
+npx skills add abdussamadbello/echonext
+```
+
+Works with Claude Code, Cursor, GitHub Copilot, Gemini CLI, OpenCode, Codex, and
+[40+ other clients](https://agentskills.io/clients) that support the Agent Skills format.
+Use `-s echonext-handlers` for a single skill, or `--all` to install everything without prompts.
+
+**Claude Code plugin:**
+
+```
+/plugin marketplace add abdussamadbello/echonext
+/plugin install echonext@echonext
+```
+
+| Skill | Use it for |
+| --- | --- |
+| `echonext-cli` | Scaffolding projects, generating code, dev/build/test/db commands |
+| `echonext-domain` | Adding a full domain — model + service + handler + DTO |
+| `echonext-handlers` | Typed handlers, request structs, validation tags, route registration |
+| `echonext-database` | GORM models, the generic `Repository[T]`, Atlas migrations and seeds |
+| `echonext-openapi-security` | OpenAPI metadata, Swagger UI, auth security schemes |
+| `echonext-middleware-config` | Middleware ordering, custom `echo.MiddlewareFunc`, YAML/env config |
+| `echonext-integrations` | WebSocket hubs, gqlgen GraphQL, multipart file uploads |
+| `echonext-testing` | The `APIClient`, `Suite`, and `FixtureManager` helpers |
+
+The skills live in [`skills/`](skills/) and follow the
+[Agent Skills specification](https://agentskills.io/specification).
+
 ## Quick Start
 
 ```go

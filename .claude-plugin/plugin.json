@@ -1,0 +1,10 @@
+{
+  "name": "echonext",
+  "description": "Agent skills for building type-safe Go APIs with EchoNext on Echo — typed handlers, domain scaffolding, OpenAPI, database, middleware, integrations, and testing.",
+  "version": "1.5.0",
+  "author": { "name": "Abdussamad Bello" },
+  "homepage": "https://echonext.dev",
+  "repository": "https://github.com/abdussamadbello/echonext",
+  "license": "MIT",
+  "keywords": ["go", "golang", "echo", "api", "openapi", "rest"]
+}

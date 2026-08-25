@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "echonext",
+  "description": "EchoNext framework skills for Claude Code",
+  "owner": {
+    "name": "Abdussamad Bello",
+    "url": "https://github.com/abdussamadbello"
+  },
+  "plugins": [
+    {
+      "name": "echonext",
+      "description": "Agent skills for building type-safe Go APIs with EchoNext on Echo — typed handlers, domain scaffolding, OpenAPI, database, middleware, integrations, and testing.",
+      "source": "./",
+      "category": "development",
+      "homepage": "https://echonext.dev"
+    }
+  ]
+}
