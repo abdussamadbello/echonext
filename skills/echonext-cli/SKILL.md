@@ -17,6 +17,35 @@ generates code from templates, runs a hot-reload dev server, builds, tests, and
 drives Atlas database migrations. **Prefer the generators over hand-writing
 boilerplate** — they emit code in the framework's conventional layout.
 
+## Prerequisite: the `echonext` binary
+
+Every command below needs the CLI on `PATH`. Check for it first, and install it
+when it is missing — do not report the commands as unavailable:
+
+```bash
+command -v echonext
+```
+
+To install, prefer the script: it builds the binary, renames `echonext-cli` to
+`echonext`, and reports whether the install directory is on `PATH`.
+
+```bash
+curl -sSL https://raw.githubusercontent.com/abdussamadbello/echonext/main/install.sh | bash
+```
+
+On Windows, use `iwr -useb https://raw.githubusercontent.com/abdussamadbello/echonext/main/install.ps1 | iex`.
+
+To install with the Go toolchain instead, note that the binary is named
+`echonext-cli` and must be linked or invoked under that name:
+
+```bash
+go install github.com/abdussamadbello/echonext/cmd/echonext-cli@latest
+ln -sf "$(go env GOPATH)/bin/echonext-cli" "$(go env GOPATH)/bin/echonext"
+```
+
+EchoNext v1.5.0 requires Go 1.26 or newer. Verify with `go version` before
+installing, and report the mismatch rather than proceeding if the toolchain is older.
+
 ## Project lifecycle
 
 ```bash

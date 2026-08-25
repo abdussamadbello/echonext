@@ -15,6 +15,7 @@ import (
 func newInitCmd() *cobra.Command {
 	var template string
 	var module string
+	var withSkills bool
 
 	cmd := &cobra.Command{
 		Use:   "init [name]",
@@ -30,7 +31,12 @@ Available templates:
 Examples:
   echonext init myapi
   echonext init blog-api --template=standard
-  echonext init payment-service --template=microservice`,
+  echonext init payment-service --template=microservice
+  echonext init myapi --with-skills
+
+With --with-skills, the EchoNext agent skills are installed into the new project
+so AI coding assistants know the framework's conventions. This requires npx and
+writes skills-lock.json, which should be committed.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectName := args[0]
@@ -56,6 +62,7 @@ Examples:
 				Module:       module,
 				Template:     template,
 				EchoNextPath: detectEchoNextPath(),
+				WithSkills:   withSkills,
 			}
 
 			return generator.Generate()
@@ -64,6 +71,7 @@ Examples:
 
 	cmd.Flags().StringVarP(&template, "template", "t", "standard", "Project template (standard, minimal, microservice, monolith)")
 	cmd.Flags().StringVarP(&module, "module", "m", "", "Go module name (defaults to project name)")
+	cmd.Flags().BoolVar(&withSkills, "with-skills", false, "Install the EchoNext agent skills into the project (requires npx)")
 
 	return cmd
 }
@@ -107,6 +115,7 @@ type ProjectGenerator struct {
 	Module           string
 	Template         string
 	EchoNextPath     string // Path to echonext for local development
+	WithSkills       bool   // Install agent skills into the generated project
 	templateGenerator *generator.ProjectGenerator
 }
 
@@ -226,6 +235,11 @@ func (g *ProjectGenerator) generateStandardProject() error {
 		fmt.Println("You may need to run 'go mod tidy' manually.")
 	}
 
+	// Install agent skills so AI assistants know the framework's conventions
+	if g.WithSkills {
+		g.installSkills()
+	}
+
 	fmt.Printf("\n✅ Project '%s' created successfully!\n\n", g.Name)
 	fmt.Printf("Next steps:\n")
 	fmt.Printf("  cd %s\n", g.Name)
@@ -238,6 +252,33 @@ func (g *ProjectGenerator) generateStandardProject() error {
 	fmt.Printf("Documentation will be available at http://localhost:8080/api/docs\n")
 
 	return nil
+}
+
+// installSkills installs the EchoNext agent skills into the generated project.
+// Skills are optional tooling, so every failure here is a warning: the project
+// itself is already complete by the time this runs.
+func (g *ProjectGenerator) installSkills() {
+	const manual = "npx skills add abdussamadbello/echonext"
+
+	if _, err := exec.LookPath("npx"); err != nil {
+		fmt.Println("\n⚠️  Skipping agent skills: npx not found on PATH.")
+		fmt.Printf("   Install them later with: %s\n", manual)
+		return
+	}
+
+	fmt.Println("\nInstalling EchoNext agent skills...")
+	skillsCmd := exec.Command("npx", "-y", "skills", "add", "abdussamadbello/echonext", "-s", "*", "-y")
+	skillsCmd.Dir = g.Name
+	skillsCmd.Stdout = os.Stdout
+	skillsCmd.Stderr = os.Stderr
+	if err := skillsCmd.Run(); err != nil {
+		fmt.Printf("⚠️  Agent skill install failed: %v\n", err)
+		fmt.Printf("   Install them later with: %s\n", manual)
+		return
+	}
+
+	fmt.Println("✅ Agent skills installed. Commit skills-lock.json so collaborators")
+	fmt.Println("   can restore them with: npx skills experimental_install")
 }
 
 // Helper methods for other template types
