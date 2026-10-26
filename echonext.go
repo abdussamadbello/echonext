@@ -716,6 +716,56 @@ func (app *App) registerWSRoute(path string, handler interface{}, opts ...Route)
 	app.Echo.GET(path, echoHandler)
 }
 
+var errorType = reflect.TypeOf((*error)(nil)).Elem()
+
+// writeHandlerResult turns a handler's return values into the response: an
+// error becomes a Response[any] error with its status, a non-zero value is
+// wrapped in Response[any] with the route's success status, and anything else
+// is 204 No Content. Nothing is written once the handler has sent its own
+// response, so handlers may call c.JSON, c.Blob or c.NoContent themselves.
+func writeHandlerResult(c *echo.Context, results []reflect.Value, routeConfig *Route) error {
+	var err error
+	if len(results) > 0 {
+		err, _ = results[len(results)-1].Interface().(error)
+	}
+
+	if resp, _ := echo.UnwrapResponse(c.Response()); resp != nil && resp.Committed {
+		// Hand any error on to middleware; Echo's error handler skips
+		// committed responses
+		return err
+	}
+
+	if err != nil {
+		// Handle echo.HTTPError specially
+		if he, ok := err.(*echo.HTTPError); ok {
+			return c.JSON(he.Code, Response[any]{
+				Error:   fmt.Sprintf("%v", he.Message),
+				Success: false,
+			})
+		}
+		return c.JSON(http.StatusInternalServerError, Response[any]{
+			Error:   err.Error(),
+			Success: false,
+		})
+	}
+
+	// func(c) error handlers have no value to return
+	if len(results) > 0 && results[0].Type() != errorType && results[0].IsValid() && !results[0].IsZero() {
+		// Determine status code
+		statusCode := http.StatusOK
+		if routeConfig != nil && routeConfig.SuccessStatus > 0 {
+			statusCode = routeConfig.SuccessStatus
+		}
+
+		return c.JSON(statusCode, Response[any]{
+			Data:    results[0].Interface(),
+			Success: true,
+		})
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
 // createUploadEchoHandler wraps file upload handlers for Echo
 func (app *App) createUploadEchoHandler(handler interface{}, requestType, responseType reflect.Type, routeConfig *Route) echo.HandlerFunc {
 	handlerValue := reflect.ValueOf(handler)
@@ -756,41 +806,7 @@ func (app *App) createUploadEchoHandler(handler interface{}, requestType, respon
 		// Call handler
 		results := handlerValue.Call(args)
 
-		// Handle response
-		if len(results) > 0 {
-			// Check if last result is an error
-			if len(results) > 1 {
-				if err, ok := results[len(results)-1].Interface().(error); ok && err != nil {
-					// Handle echo.HTTPError specially
-					if he, ok := err.(*echo.HTTPError); ok {
-						return c.JSON(he.Code, Response[any]{
-							Error:   fmt.Sprintf("%v", he.Message),
-							Success: false,
-						})
-					}
-					return c.JSON(http.StatusInternalServerError, Response[any]{
-						Error:   err.Error(),
-						Success: false,
-					})
-				}
-			}
-
-			// Return successful response
-			if results[0].IsValid() && !results[0].IsZero() {
-				// Determine status code
-				statusCode := http.StatusOK
-				if routeConfig != nil && routeConfig.SuccessStatus > 0 {
-					statusCode = routeConfig.SuccessStatus
-				}
-
-				return c.JSON(statusCode, Response[any]{
-					Data:    results[0].Interface(),
-					Success: true,
-				})
-			}
-		}
-
-		return c.NoContent(http.StatusNoContent)
+		return writeHandlerResult(c, results, routeConfig)
 	}
 }
 
@@ -847,41 +863,7 @@ func (app *App) createEchoHandler(handler interface{}, requestType, responseType
 		// Call handler
 		results := handlerValue.Call(args)
 
-		// Handle response
-		if len(results) > 0 {
-			// Check if last result is an error
-			if len(results) > 1 {
-				if err, ok := results[len(results)-1].Interface().(error); ok && err != nil {
-					// Handle echo.HTTPError specially
-					if he, ok := err.(*echo.HTTPError); ok {
-						return c.JSON(he.Code, Response[any]{
-							Error:   fmt.Sprintf("%v", he.Message),
-							Success: false,
-						})
-					}
-					return c.JSON(http.StatusInternalServerError, Response[any]{
-						Error:   err.Error(),
-						Success: false,
-					})
-				}
-			}
-
-			// Return successful response
-			if results[0].IsValid() && !results[0].IsZero() {
-				// Determine status code
-				statusCode := http.StatusOK
-				if routeConfig != nil && routeConfig.SuccessStatus > 0 {
-					statusCode = routeConfig.SuccessStatus
-				}
-
-				return c.JSON(statusCode, Response[any]{
-					Data:    results[0].Interface(),
-					Success: true,
-				})
-			}
-		}
-
-		return c.NoContent(http.StatusNoContent)
+		return writeHandlerResult(c, results, routeConfig)
 	}
 }
 
